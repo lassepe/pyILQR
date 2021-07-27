@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "pyILQR"
+version = "0.1.0"
+description = ""
+authors = ["lassepe <lasse.peters@mailbox.org>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.21.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
