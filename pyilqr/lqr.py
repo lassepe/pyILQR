@@ -16,7 +16,6 @@ def solve_lqr(dynamics: LinearDynamics, costs: QuadraticCost):
     strategy = AffineStrategy([])
 
     # solve for the value function and feedback gains backward in time
-    # TODO: think about off-by-one error in time
     for k in reversed(range(H)):
         A, B = dynamics.A(k), dynamics.B(k)
         Q, l = costs.Q(k), costs.l(k)
