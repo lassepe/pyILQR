@@ -4,22 +4,15 @@ from pyilqr.dynamics import LinearDynamics
 from pyilqr.strategies import AffineStrategy, AffineStageStrategy
 from pyilqr.costs import QuadraticCost
 
-
-# TODO wrap this in a solver object that handles the memorey management
+# Note: Could wrap this i an object that does the memory management, in particular:
+# - store intermediate result matrices like S et al
+# - preallocate the memory for the strategy so that it can just be updated inplace
 def solve_lqr(dynamics: LinearDynamics, costs: QuadraticCost):
-    nx, nu = dynamics.dims
     H = dynamics.horizon
-
     # inialize the cost2go estimate
     _terminal_cost = costs.state_cost[H]
     Z, z = _terminal_cost.Q, _terminal_cost.l
 
-    BZ = np.zeros((nu, nx))
-    S = np.zeros((nu, nu))
-    YP = np.zeros((nu, nx))
-    Ya = np.zeros(nu)
-
-    # TODO: could preallocate
     strategy = AffineStrategy([])
 
     # solve for the value function and feedback gains backward in time
@@ -35,12 +28,11 @@ def solve_lqr(dynamics: LinearDynamics, costs: QuadraticCost):
         YP = BZ @ A
         Ya = B.T @ z + r
 
-        # compute strategy for this stage
+        # compute strategy for this stage; could be done more efficiently with householder QR
         Sinv = np.linalg.inv(S)
         P = Sinv @ YP
         a = Sinv @ Ya
         strategy.stage_strategies.insert(0, AffineStageStrategy(P, a))
-
 
         # Update the cost2go
         F = A - B @ P
