@@ -82,7 +82,7 @@ class AbstractSampledDynamics(AbstractDiscreteDynamics):
             raise NotImplementedError
 
     def linearized_discrete(
-        self, x: np.ndarray, u: np.ndarray, dt=0.1, accuracy: int = 1
+        self, x: np.ndarray, u: np.ndarray, accuracy: int = 1
     ) -> LinearStageDynamics:
         """
         Linearizes the system about the operating point (`x`, `u`). Accuracy parameter determines
@@ -93,7 +93,7 @@ class AbstractSampledDynamics(AbstractDiscreteDynamics):
         A, B = self.linearized_continuous(x, u)
 
         C = sum(
-            1 / factorial(k) * np.linalg.matrix_power(A, k - 1) * dt ** k
+            1 / factorial(k) * np.linalg.matrix_power(A, k - 1) * self.dt ** k
             for k in range(1, accuracy + 1)
         )
         Ad = np.eye(x.size) + C @ A
