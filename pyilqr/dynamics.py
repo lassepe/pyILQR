@@ -67,7 +67,9 @@ class AbstractSampledDynamics(AbstractDiscreteDynamics):
         pass
 
     @abstractmethod
-    def linearized_continuous(self, x: np.ndarray, u: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def linearized_continuous(
+        self, x: np.ndarray, u: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         pass
 
     def next_state(
