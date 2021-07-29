@@ -6,7 +6,7 @@ from dataclasses import dataclass
 class AbstractStrategy(ABC):
     @abstractmethod
     def control_input(self, x: np.ndarray, k: int):
-        raise NotImplementedError
+        pass
 
 
 @dataclass(frozen=True)

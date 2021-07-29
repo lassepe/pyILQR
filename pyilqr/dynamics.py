@@ -2,6 +2,7 @@ import numpy as np
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from math import factorial
 
 from pyilqr.strategies import AbstractStrategy
 
@@ -9,11 +10,11 @@ from pyilqr.strategies import AbstractStrategy
 class AbstractStageDynamics(ABC):
     @abstractmethod
     def dims(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def next_state(self, x: np.ndarray, u: np.ndarray):
-        raise NotImplementedError
+        pass
 
 
 @dataclass(frozen=True)
@@ -29,10 +30,16 @@ class LinearStageDynamics(AbstractStageDynamics):
         return self.A @ x + self.B @ u
 
 
-class AbstractDynamics(ABC):
+@dataclass
+class AbstractDiscreteDynamics(ABC):
     @abstractmethod
-    def next_state(self, x: np.ndarray, u: np.ndarray, k: int):
-        raise NotImplementedError
+    def next_state(
+        self,
+        x: np.ndarray,
+        u: np.ndarray,
+        t: int,
+    ):
+        pass
 
     def rollout(self, x0: np.ndarray, strategy: AbstractStrategy, horizon: int):
         """
@@ -52,7 +59,41 @@ class AbstractDynamics(ABC):
 
 
 @dataclass
-class TimeVaryingDynamics(AbstractDynamics):
+class AbstractSampledDynamics(AbstractDiscreteDynamics):
+    dt: float = 0.1
+
+    @abstractmethod
+    def dx(self, x: np.ndarray, u: np.ndarray, t: float) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def linearized_continuous(self, x: np.ndarray, u: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        pass
+
+    def next_state(
+        self, x: np.ndarray, u: np.ndarray, t: int, method: str = "ForwardEuler"
+    ) -> np.ndarray:
+
+        if method == "ForwardEuler":
+            return x + self.dt * self.dx(x, u, t * self.dt)
+        else:
+            raise NotImplementedError
+
+    def linearized_discrete(
+        self, x: np.ndarray, u: np.ndarray, dt=0.1, accuracy: int = 5
+    ) -> LinearStageDynamics:
+        A, B = self.linearized_continuous(x, u)
+        AinvExpA = sum(
+            1 / factorial(k) * np.linalg.matrix_power(A, k - 1) * dt ** k
+            for k in range(accuracy)
+        )
+        Ad = AinvExpA * A
+        Bd = AinvExpA * B
+        return LinearStageDynamics(Ad, Bd)
+
+
+@dataclass
+class TimeVaryingDynamics(AbstractDiscreteDynamics):
     stage_dynamics: list[AbstractStageDynamics]
 
     @property
