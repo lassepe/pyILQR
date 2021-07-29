@@ -25,3 +25,10 @@ class AffineStrategy(AbstractStrategy):
 
     def control_input(self, x: np.ndarray, k: int):
         return self.stage_strategies[k].control_input(x)
+
+
+@dataclass
+class FunctionStrategy(AbstractStrategy):
+    controller: Callable[[np.ndarray, int], np.ndarray]
+    def control_input(self, x: np.ndarray, k: int):
+        return self.controller(x, k)
