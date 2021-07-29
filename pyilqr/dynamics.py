@@ -77,20 +77,27 @@ class AbstractSampledDynamics(AbstractDiscreteDynamics):
     ) -> np.ndarray:
 
         if method == "ForwardEuler":
-            return x + self.dt * self.dx(x, u, t * self.dt)
+            return x + self.dt * self.dx(x, u, (t * self.dt))
         else:
             raise NotImplementedError
 
     def linearized_discrete(
-        self, x: np.ndarray, u: np.ndarray, dt=0.1, accuracy: int = 5
+        self, x: np.ndarray, u: np.ndarray, dt=0.1, accuracy: int = 1
     ) -> LinearStageDynamics:
+        """
+        Linearizes the system about the operating point (`x`, `u`). Accuracy parameter determines
+        the number of terms of the matrix exponential series used to approximate the discretization.
+        For `accuracy = 1` this recovers the forward euler discretization. See
+        https://en.wikipedia.org/wiki/Discretization for more details.
+        """
         A, B = self.linearized_continuous(x, u)
-        AinvExpA = sum(
+
+        C = sum(
             1 / factorial(k) * np.linalg.matrix_power(A, k - 1) * dt ** k
-            for k in range(accuracy)
+            for k in range(1, accuracy + 1)
         )
-        Ad = AinvExpA * A
-        Bd = AinvExpA * B
+        Ad = np.eye(x.size) + C @ A
+        Bd = C @ B
         return LinearStageDynamics(Ad, Bd)
 
 
