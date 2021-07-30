@@ -81,5 +81,5 @@ class QuadraticCost(AbstractCosts):
     def r(self, k: int):
         return self.input_cost[k].l
 
-    def __call__(self, x: np.ndarray, u: np.ndarray, k:int):
+    def __call__(self, x: np.ndarray, u: np.ndarray, k: int):
         return self.state_cost[k](x) + self.input_cost[k](u)

@@ -33,12 +33,20 @@ class LinearStageDynamics(AbstractStageDynamics):
 @dataclass
 class AbstractDiscreteDynamics(ABC):
     @abstractmethod
-    def next_state(
-        self,
-        x: np.ndarray,
-        u: np.ndarray,
-        t: int,
+    def next_state(self, x: np.ndarray, u: np.ndarray, t: int):
+        pass
+
+    def linearized_along_trajectory(
+        self, x_op: list[np.ndarray], u_op: list[np.ndarray]
     ):
+        return LinearDynamics(
+            [self.linearized_discrete(x, u) for (x, u) in zip(x_op, u_op)]
+        )
+
+    @abstractmethod
+    def linearized_discrete(
+        self, x: np.ndarray, u_op: np.ndarray
+    ) -> "LinearStageDynamics":
         pass
 
     def rollout(self, x0: np.ndarray, strategy: AbstractStrategy, horizon: int):
@@ -46,16 +54,16 @@ class AbstractDiscreteDynamics(ABC):
         Simulates dynamics forward in time by choosing controls according to
         `stage_strategies` starting from initial state `x0`.
         """
-        trajectory = [x0]
-        inputs = []
+        xs = [x0]
+        us = []
 
         for k in range(horizon):
-            x = trajectory[-1]
+            x = xs[-1]
             u = strategy.control_input(x, k)
-            trajectory.append(self.next_state(x, u, k))
-            inputs.append(u)
+            xs.append(self.next_state(x, u, k))
+            us.append(u)
 
-        return trajectory, inputs
+        return xs, us
 
 
 @dataclass
@@ -102,8 +110,8 @@ class AbstractSampledDynamics(AbstractDiscreteDynamics):
 
 
 @dataclass
-class TimeVaryingDynamics(AbstractDiscreteDynamics):
-    stage_dynamics: list[AbstractStageDynamics]
+class LinearDynamics(AbstractDiscreteDynamics):
+    stage_dynamics: list[LinearStageDynamics]
 
     @property
     def dims(self):
@@ -113,16 +121,14 @@ class TimeVaryingDynamics(AbstractDiscreteDynamics):
     def horizon(self):
         return len(self.stage_dynamics)
 
+    def linearized_discrete(self, x, u):
+        raise NotImplementedError
+
     def next_state(self, x: np.ndarray, u: np.ndarray, k: int):
         return self.stage_dynamics[k].next_state(x, u)
 
     def rollout(self, x0: np.ndarray, strategy: AbstractStrategy):
         return super().rollout(x0, strategy, self.horizon)
-
-
-@dataclass
-class LinearDynamics(TimeVaryingDynamics):
-    stage_dynamics: list[LinearStageDynamics]
 
     def A(self, k):
         return self.stage_dynamics[k].A
