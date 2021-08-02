@@ -10,6 +10,7 @@ from pyilqr.lqr import solve_lqr
 def _update_operating_point(
     current_operating_point, last_operating_point, local_strategy
 ) -> bool:
+    # TODO: implement armijo line-search
     return True
 
 
