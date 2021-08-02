@@ -3,7 +3,7 @@ import copy
 
 from pyilqr.strategies import AbstractStrategy
 from pyilqr.dynamics import AbstractDiscreteDynamics
-from pyilqr.costs import AbstractCosts
+from pyilqr.costs import AbstractCost
 from pyilqr.lqr import solve_lqr
 
 
@@ -15,7 +15,7 @@ def _update_operating_point(
 
 def solve_ilqr(
     dynamics: AbstractDiscreteDynamics,
-    costs: AbstractCosts,
+    costs: AbstractCost,
     initial_strategy: AbstractStrategy,
     x0: np.ndarray,
     horizon: int,
