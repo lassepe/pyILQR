@@ -57,10 +57,10 @@ class AbstractDiscreteDynamics(ABC):
         xs = [x0]
         us = []
 
-        for k in range(horizon):
+        for t in range(horizon):
             x = xs[-1]
-            u = strategy.control_input(x, k)
-            xs.append(self.next_state(x, u, k))
+            u = strategy.control_input(x, t)
+            xs.append(self.next_state(x, u, t))
             us.append(u)
 
         return xs, us
@@ -124,14 +124,14 @@ class LinearDynamics(AbstractDiscreteDynamics):
     def linearized_discrete(self, x, u):
         raise NotImplementedError
 
-    def next_state(self, x: np.ndarray, u: np.ndarray, k: int):
-        return self.stage_dynamics[k].next_state(x, u)
+    def next_state(self, x: np.ndarray, u: np.ndarray, t: int):
+        return self.stage_dynamics[t].next_state(x, u)
 
     def rollout(self, x0: np.ndarray, strategy: AbstractStrategy):
         return super().rollout(x0, strategy, self.horizon)
 
-    def A(self, k):
-        return self.stage_dynamics[k].A
+    def A(self, t):
+        return self.stage_dynamics[t].A
 
-    def B(self, k):
-        return self.stage_dynamics[k].B
+    def B(self, t):
+        return self.stage_dynamics[t].B

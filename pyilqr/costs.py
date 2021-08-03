@@ -7,9 +7,12 @@ class AbstractCost(ABC):
     """
     The abstract cost description, including cost derivatives, for a single stage
     """
+    @abstractmethod
+    def state_cost(self, x: np.ndarray) -> float:
+        pass
 
     @abstractmethod
-    def __call__(self, x: np.ndarray, u: np.ndarray) -> float:
+    def input_cost(self, u:np.ndarray) -> float:
         pass
 
     @abstractmethod
@@ -17,11 +20,11 @@ class AbstractCost(ABC):
         pass
 
     @abstractmethod
-    def stage_state_gradient(self, u) -> np.ndarray:
+    def stage_state_gradient(self, x) -> np.ndarray:
         pass
 
     @abstractmethod
-    def stage_input_hessian(self, x) -> np.ndarray:
+    def stage_input_hessian(self, u) -> np.ndarray:
         pass
 
     @abstractmethod
@@ -44,6 +47,10 @@ class AbstractCost(ABC):
             for u in u_op
         ]
         return QuadraticCost(state_cost, input_cost)
+
+    def trajectory_cost(self, states, inputs):
+        assert len(states) == len(inputs) + 1
+        return sum(self.state_cost(x) for x in states) + sum(self.input_cost(u) for u in inputs)
 
 
 @dataclass
@@ -71,10 +78,10 @@ class QuadraticCost:
     def state_gradient(self, x):
         raise NotImplementedError
 
-    def input_hessian(self, x):
+    def input_hessian(self, u):
         raise NotImplementedError
 
-    def input_gradient(self, x):
+    def input_gradient(self, u):
         raise NotImplementedError
 
     def Q(self, k: int):

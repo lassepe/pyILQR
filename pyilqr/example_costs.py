@@ -10,9 +10,12 @@ class TrackingCost(AbstractCost):
     Q: np.ndarray
     x_target: np.ndarray
 
-    def __call__(self, x, u):
+    def state_cost(self, x):
         ex = x - self.x_target
-        return 0.5 * ex.T @ self.Q @ ex + u.T @ self.R @ u
+        return 0.5 * ex.T @ self.Q @ ex
+
+    def input_cost(self, u):
+        return 0.5 * u.T @ self.R @ u
 
     def stage_state_hessian(self, x):
         return self.Q
