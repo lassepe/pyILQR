@@ -1,43 +1,46 @@
 import numpy as np
-
-from pyilqr.dynamics import LinearDynamics
+from dataclasses import dataclass
 from pyilqr.strategies import AffineStrategy, AffineStageStrategy
-from pyilqr.costs import QuadraticCost
+from pyilqr.ocp import LQRProblem
 
-# Note: Could wrap this i an object that does the memory management, in particular:
+# Note: Could optimize this by making LQRSolver manage the memory
 # - store intermediate result matrices like S et al
 # - preallocate the memory for the strategy so that it can just be updated inplace
-def solve_lqr(dynamics: LinearDynamics, costs: QuadraticCost):
-    H = dynamics.horizon
-    # inialize the cost2go estimate
-    _terminal_cost = costs.state_cost[H]
-    Z, z = _terminal_cost.Q, _terminal_cost.l
+@dataclass
+class LQRSolver:
+    ocp: LQRProblem
 
-    strategy = AffineStrategy([])
+    def solve(self):
+        H = self.ocp.dynamics.horizon
+        # inialize the cost2go estimate
+        _terminal_cost = self.ocp.cost.state_cost[H]
+        Z, z = _terminal_cost.Q, _terminal_cost.l
 
-    # solve for the value function and feedback gains backward in time
-    for k in reversed(range(H)):
-        A, B = dynamics.A(k), dynamics.B(k)
-        Q, l = costs.Q(k), costs.l(k)
-        R, r = costs.R(k), costs.r(k)
+        strategy = AffineStrategy([])
 
-        # setup system of equations
-        BZ = B.T @ Z
-        S = R + BZ @ B
-        YP = BZ @ A
-        Ya = B.T @ z + r
+        # solve for the value function and feedback gains backward in time
+        for k in reversed(range(H)):
+            A, B = self.ocp.dynamics.A(k), self.ocp.dynamics.B(k)
+            Q, l = self.ocp.cost.Q(k), self.ocp.cost.l(k)
+            R, r = self.ocp.cost.R(k), self.ocp.cost.r(k)
 
-        # compute strategy for this stage; could be done more efficiently with householder QR
-        Sinv = np.linalg.inv(S)
-        P = Sinv @ YP
-        a = Sinv @ Ya
-        strategy.stage_strategies.insert(0, AffineStageStrategy(P, a))
+            # setup system of equations
+            BZ = B.T @ Z
+            S = R + BZ @ B
+            YP = BZ @ A
+            Ya = B.T @ z + r
 
-        # Update the cost2go
-        F = A - B @ P
-        b = -B @ a
-        PR = P.T @ R
-        z = F.T @ (z + Z @ b) + l + PR @ a - P.T @ r
-        Z = F.T @ Z @ F + Q + PR @ P
+            # compute strategy for this stage; could be done more efficiently with householder QR
+            Sinv = np.linalg.inv(S)
+            P = Sinv @ YP
+            a = Sinv @ Ya
+            strategy.stage_strategies.insert(0, AffineStageStrategy(P, a))
 
-    return strategy
+            # Update the cost2go
+            F = A - B @ P
+            b = -B @ a
+            PR = P.T @ R
+            z = F.T @ (z + Z @ b) + l + PR @ a - P.T @ r
+            Z = F.T @ Z @ F + Q + PR @ P
+
+        return strategy
