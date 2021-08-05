@@ -7,12 +7,13 @@ class AbstractCost(ABC):
     """
     The abstract cost description, including cost derivatives, for a single stage
     """
+
     @abstractmethod
     def state_cost(self, x: np.ndarray) -> float:
         pass
 
     @abstractmethod
-    def input_cost(self, u:np.ndarray) -> float:
+    def input_cost(self, u: np.ndarray) -> float:
         pass
 
     @abstractmethod
@@ -50,7 +51,9 @@ class AbstractCost(ABC):
 
     def trajectory_cost(self, states, inputs):
         assert len(states) == len(inputs) + 1
-        return sum(self.state_cost(x) for x in states) + sum(self.input_cost(u) for u in inputs)
+        return sum(self.state_cost(x) for x in states) + sum(
+            self.input_cost(u) for u in inputs
+        )
 
 
 @dataclass

@@ -22,7 +22,7 @@ def _local_rollout(
 
     for t in range(horizon):
         x = xs[-1]
-        du = local_strategy.control_input(x, t)
+        du = local_strategy.control_input(x - x_op[t], t)
         u = u_op[t] + step_size * du
         xs.append(nonlinear_dynamics.next_state(x, u, t))
         us.append(u)
@@ -41,6 +41,9 @@ def _update_operating_point(
 ):
 
     step_size = 1
+    updated_cost = float("inf")
+    updated_operating_point = None
+    found_decent_step = False
 
     for _ in range(n_backtracking_steps):
         updated_operating_point = _local_rollout(
@@ -48,13 +51,16 @@ def _update_operating_point(
         )
         # TODO: technically, we would want to have some *sufficient* decrease.
         updated_cost = cost_model.trajectory_cost(*updated_operating_point)
-        print(updated_cost - last_cost)
         if updated_cost < last_cost:
-            return updated_operating_point, True
-        else:
-            step_size *= step_scale
+            found_decent_step = True
+            break
+        step_size *= step_scale
 
-    return last_operating_point, False
+    if not found_decent_step:
+        updated_operating_point = last_operating_point
+        updated_cost = last_cost
+
+    return updated_operating_point, updated_cost, found_decent_step
 
 
 # TODO: could probably avoid some allocations here
@@ -67,29 +73,27 @@ def solve_ilqr(
     max_iterations: int = 100,
     n_backtracking_steps=5,
     gradient_tolerance=1e-1,
-):
+    verbose=False,
+) -> Tuple:
 
     last_operating_point = dynamics.rollout(x0, initial_strategy, horizon)
     last_cost = cost_model.trajectory_cost(*last_operating_point)
     has_converged = False
 
-    for _ in range(max_iterations):
+    for it in range(max_iterations):
+        if has_converged:
+            break
         quadratic_costs = cost_model.quadratisized_along_trajectory(
             *last_operating_point
         )
-        cost_gradient_norm = sum(
-            (cs.l ** 2).sum() for cs in quadratic_costs.state_cost
-        ) + sum((cs.l ** 2).sum() for cs in quadratic_costs.input_cost)
-        print("cost_gradient_norm: ", cost_gradient_norm)
-        # TODO: this convergence check is wrong since it does not account for the dynamics
-        # constraints, this should rather check for something like the total derivative in u
-        has_converged = cost_gradient_norm < gradient_tolerance
-        if has_converged:
-            break
         linear_dynamics = dynamics.linearized_along_trajectory(*last_operating_point)
 
         local_strategy = solve_lqr(linear_dynamics, quadratic_costs)
-        last_operating_point, found_decent_direction = _update_operating_point(
+        (
+            last_operating_point,
+            updated_cost,
+            found_decent_step,
+        ) = _update_operating_point(
             last_operating_point,
             cost_model,
             last_cost,
@@ -98,7 +102,10 @@ def solve_ilqr(
             n_backtracking_steps,
         )
 
-        if not found_decent_direction:
-            break
+        if verbose:
+            print("Cost Delta:", updated_cost - last_cost)
+        last_cost = updated_cost
+        # This could be replaced with a more accurate convergence criterion.
+        has_converged = not found_decent_step
 
     return last_operating_point, has_converged
