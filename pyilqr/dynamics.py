@@ -1,24 +1,16 @@
 import numpy as np
+import matplotlib.axes
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from math import factorial
+from typing import Tuple
 
 from pyilqr.strategies import AbstractStrategy
 
 
-class AbstractStageDynamics(ABC):
-    @abstractmethod
-    def dims(self):
-        pass
-
-    @abstractmethod
-    def next_state(self, x: np.ndarray, u: np.ndarray):
-        pass
-
-
 @dataclass(frozen=True)
-class LinearStageDynamics(AbstractStageDynamics):
+class LinearStageDynamics:
     A: np.ndarray
     B: np.ndarray
 
@@ -30,10 +22,15 @@ class LinearStageDynamics(AbstractStageDynamics):
         return self.A @ x + self.B @ u
 
 
-@dataclass
+@dataclass(frozen=True)
 class AbstractDiscreteDynamics(ABC):
+    @property
     @abstractmethod
-    def next_state(self, x: np.ndarray, u: np.ndarray, t: int):
+    def dims(self) -> Tuple[int, int]:
+        pass
+
+    @abstractmethod
+    def next_state(self, x: np.ndarray, u: np.ndarray, t: int) -> np.ndarray:
         pass
 
     def linearized_along_trajectory(
@@ -46,29 +43,36 @@ class AbstractDiscreteDynamics(ABC):
     @abstractmethod
     def linearized_discrete(
         self, x: np.ndarray, u_op: np.ndarray
-    ) -> "LinearStageDynamics":
+    ) -> LinearStageDynamics:
         pass
+
+    def visualize_state(self, ax: matplotlib.axes.Axes, x: np.ndarray):
+        """
+        Render the state `x` of the system on a given axis
+        """
+        raise NotImplementedError
 
     def rollout(self, x0: np.ndarray, strategy: AbstractStrategy, horizon: int):
         """
-        Simulates dynamics forward in time by choosing controls according to
-        `stage_strategies` starting from initial state `x0`.
+        Simulates the dynamical system forward in time for `horizon` steps by choosing controls
+        according to `strategy` starting from initial state `x0`.
         """
-        xs = [x0]
-        us = []
-
+        n_states, n_inputs = self.dims
+        trajectory = np.zeros((horizon + 1, n_states))
+        trajectory[0] = x0
+        inputs = np.zeros((horizon, n_inputs))
         for t in range(horizon):
-            x = xs[-1]
+            x = trajectory[t]
             u = strategy.control_input(x, t)
-            xs.append(self.next_state(x, u, t))
-            us.append(u)
+            inputs[t] = u
+            trajectory[t + 1] = self.next_state(x, u, t)
 
-        return xs, us
+        return trajectory, inputs
 
 
-@dataclass
+@dataclass(frozen=True)
 class AbstractSampledDynamics(AbstractDiscreteDynamics):
-    dt: float = 0.1
+    dt: float = 0.05
 
     @abstractmethod
     def dx(self, x: np.ndarray, u: np.ndarray, t: float) -> np.ndarray:
@@ -109,7 +113,7 @@ class AbstractSampledDynamics(AbstractDiscreteDynamics):
         return LinearStageDynamics(Ad, Bd)
 
 
-@dataclass
+@dataclass(frozen=True)
 class LinearDynamics(AbstractDiscreteDynamics):
     stage_dynamics: list[LinearStageDynamics]
 

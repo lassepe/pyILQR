@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 from pyilqr.example_costs import TrackingCost
 from pyilqr.example_dyanmics import UnicycleDynamics

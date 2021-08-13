@@ -35,7 +35,6 @@ class AbstractCost(ABC):
     def _quadratisized(self, x, to_hessian, to_gradient) -> "QuadraticCostPrimitive":
         H = to_hessian(x)
         g = to_gradient(x)
-        # TODO: think about scaling
         return QuadraticCostPrimitive(H, g)
 
     def quadratisized_along_trajectory(self, x_op, u_op) -> "QuadraticCost":

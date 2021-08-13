@@ -1,12 +1,12 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Union
+from typing import Callable
 
 
 class AbstractStrategy(ABC):
     @abstractmethod
-    def control_input(self, x: np.ndarray, t: int):
+    def control_input(self, x: np.ndarray, t: int) -> np.ndarray:
         pass
 
 
@@ -19,7 +19,7 @@ class AffineStageStrategy:
         return -self.P @ x - self.a
 
 
-@dataclass
+@dataclass(frozen=True)
 class AffineStrategy(AbstractStrategy):
     stage_strategies: list[AffineStageStrategy]
 
@@ -27,9 +27,17 @@ class AffineStrategy(AbstractStrategy):
         return self.stage_strategies[t].control_input(x)
 
 
-@dataclass
+@dataclass(frozen=True)
 class FunctionStrategy(AbstractStrategy):
     controller: Callable[[np.ndarray, int], np.ndarray]
 
     def control_input(self, x: np.ndarray, t: int):
         return self.controller(x, t)
+
+
+@dataclass(frozen=True)
+class OpenLoopStrategy(AbstractStrategy):
+    inputs: np.ndarray
+
+    def control_input(self, x: np.ndarray, t: int):
+        return self.inputs[t]
