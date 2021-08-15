@@ -13,7 +13,7 @@ class LQRSolver:
     def solve(self):
         H = self.ocp.dynamics.horizon
         # inialize the cost2go estimate
-        _terminal_cost = self.ocp.cost.state_cost[H]
+        _terminal_cost = self.ocp.state_cost[H]
         Z, z = _terminal_cost.Q, _terminal_cost.l
 
         strategy = AffineStrategy([])
@@ -21,8 +21,8 @@ class LQRSolver:
         # solve for the value function and feedback gains backward in time
         for k in reversed(range(H)):
             A, B = self.ocp.dynamics.A(k), self.ocp.dynamics.B(k)
-            Q, l = self.ocp.cost.Q(k), self.ocp.cost.l(k)
-            R, r = self.ocp.cost.R(k), self.ocp.cost.r(k)
+            Q, l = self.ocp.state_cost[k].Q, self.ocp.state_cost[k].l
+            R, r = self.ocp.input_cost[k].Q, self.ocp.input_cost[k].l
 
             # setup system of equations
             BZ = B.T @ Z

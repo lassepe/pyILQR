@@ -2,7 +2,7 @@ import numpy as np
 import math
 
 from pyilqr.dynamics import LinearDynamics, LinearStageDynamics
-from pyilqr.costs import QuadraticCost, QuadraticCostPrimitive
+from pyilqr.costs import QuadraticCost
 from pyilqr.ocp import LQRProblem
 from pyilqr.lqr import LQRSolver
 
@@ -18,12 +18,11 @@ def setup_double_integrator_ocp(horizon=100, dt=0.20, x_target=np.array([1, 0]))
 
     R = np.eye(1)
     r = np.zeros(1)
-    costs = QuadraticCost(
-        state_cost=[QuadraticCostPrimitive(Q, l) for _ in range(horizon + 1)],
-        input_cost=[QuadraticCostPrimitive(R, r) for _ in range(horizon)],
-    )
 
-    return LQRProblem(dynamics, costs, horizon), x_target
+    state_cost = [QuadraticCost(Q, l) for _ in range(horizon + 1)]
+    input_cost = [QuadraticCost(R, r) for _ in range(horizon)]
+
+    return LQRProblem(dynamics, state_cost, input_cost), x_target
 
 
 def test_solve_lqr(tol=1e-5):

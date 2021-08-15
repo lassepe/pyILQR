@@ -27,7 +27,7 @@ class RecedingHorizonStrategy(AbstractStrategy):
         object.__setattr__(self, "_initial_strategy", initial_strategy)
 
     def control_input(self, x: np.ndarray, t: int):
-        (xs, us), converged = self.inner_solver.solve(x, self._initial_strategy)
+        xs, us, converged = self.inner_solver.solve(x, self._initial_strategy)
         if not converged:
             raise RuntimeError(
                 "Inner solver of receding horizon strategy did not converge."

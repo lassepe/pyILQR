@@ -1,30 +1,81 @@
 import numpy as np
+import math
 
 from dataclasses import dataclass
+from typing import Sequence
 from pyilqr.costs import AbstractCost
 
 
 @dataclass
-class TrackingCost(AbstractCost):
-    R: np.ndarray
+class SetpointTrackingCost(AbstractCost):
     Q: np.ndarray
     x_target: np.ndarray
 
-    def state_cost(self, x):
+    def cost(self, x):
         ex = x - self.x_target
         return 0.5 * ex.T @ self.Q @ ex
 
-    def input_cost(self, u):
-        return 0.5 * u.T @ self.R @ u
-
-    def stage_state_hessian(self, x):
-        return self.Q
-
-    def stage_state_gradient(self, x):
+    def gradient(self, x: np.ndarray):
         return self.Q @ (x - self.x_target)
 
-    def stage_input_hessian(self, u):
-        return self.R
+    def hessian(self, x: np.ndarray):
+        return self.Q
 
-    def stage_input_gradient(self, u):
-        return self.R @ u
+
+@dataclass(frozen=True)
+class Polyline:
+    points: Sequence[np.ndarray]
+
+    def closest_point(self, p: np.ndarray):
+        d_min = float("inf")
+        p_closest = None
+        for i in range(len(self.points) - 1):
+            p_closest_candidate = self._closest_point_on_segment(
+                self.points[i], self.points[i + 1], p
+            )
+            v = p - p_closest_candidate
+            d = v.dot(v)  # type: ignore
+            if d < d_min:
+                dmin = d
+                p_closest = p_closest_candidate
+
+        return p_closest
+
+    def _closest_point_on_segment(
+        self, p_start: np.ndarray, p_end: np.ndarray, p_other: np.ndarray
+    ):
+        line_vec = p_end - p_start
+        line_length_sqr = line_vec.dot(line_vec)  # type: ignore
+
+        if math.isclose(line_length_sqr, 0):
+            return p_start
+
+        t = (p_other - p_start).dot(line_vec) / line_length_sqr  # type: ignore
+        if t <= 0:
+            return p_start
+        if t >= 1:
+            return p_end
+        return p_start + line_vec * t
+
+
+@dataclass
+class PolylineTrackingCost(AbstractCost):
+    polyline: Polyline
+    weight: float
+
+    def cost(self, x):
+        p = x[:2]
+        delta = p - self.polyline.closest_point(p)
+        return 0.5 * delta.dot(delta) * self.weight
+
+    def hessian(self, x):
+        hess_diag = np.zeros_like(x)
+        hess_diag[:2] = self.weight
+        return np.diag(hess_diag)
+
+    def gradient(self, x):
+        p = x[:2]
+        delta = p - self.polyline.closest_point(p)
+        grad = np.zeros_like(x)
+        grad[:2] = delta * self.weight
+        return grad

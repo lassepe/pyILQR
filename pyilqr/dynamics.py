@@ -33,9 +33,7 @@ class AbstractDiscreteDynamics(ABC):
     def next_state(self, x: np.ndarray, u: np.ndarray, t: int) -> np.ndarray:
         pass
 
-    def linearized_along_trajectory(
-        self, x_op: list[np.ndarray], u_op: list[np.ndarray]
-    ):
+    def linearized_along_trajectory(self, x_op: np.ndarray, u_op: np.ndarray):
         return LinearDynamics(
             [self.linearized_discrete(x, u) for (x, u) in zip(x_op, u_op)]
         )
@@ -58,16 +56,16 @@ class AbstractDiscreteDynamics(ABC):
         according to `strategy` starting from initial state `x0`.
         """
         n_states, n_inputs = self.dims
-        trajectory = np.zeros((horizon + 1, n_states))
-        trajectory[0] = x0
-        inputs = np.zeros((horizon, n_inputs))
+        xs = np.zeros((horizon + 1, n_states))
+        xs[0] = x0
+        us = np.zeros((horizon, n_inputs))
         for t in range(horizon):
-            x = trajectory[t]
+            x = xs[t]
             u = strategy.control_input(x, t)
-            inputs[t] = u
-            trajectory[t + 1] = self.next_state(x, u, t)
+            us[t] = u
+            xs[t + 1] = self.next_state(x, u, t)
 
-        return trajectory, inputs
+        return xs, us
 
 
 @dataclass(frozen=True)

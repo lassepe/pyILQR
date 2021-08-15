@@ -3,8 +3,9 @@ import time
 
 from pyilqr.receding_horizon import RecedingHorizonStrategy, ILQRSolver
 from pyilqr.ocp import OptimalControlProblem
+from pyilqr.costs import QuadraticCost
 from pyilqr.example_dyanmics import UnicycleDynamics
-from pyilqr.example_costs import TrackingCost
+from pyilqr.example_costs import SetpointTrackingCost
 
 
 def test_receding_horizon_control():
@@ -14,13 +15,13 @@ def test_receding_horizon_control():
     x0 = np.array([0, 0, 0, 0.5])
     x_target = np.array([2, 1, 0, 0])
 
-    R = np.eye(2)
-    Q = np.eye(4)
-
-    cost = TrackingCost(R, Q, x_target)
+    state_cost = SetpointTrackingCost(np.eye(4), x_target)
+    input_cost = QuadraticCost(np.eye(2), np.zeros(2))
 
     # setup the per-horizon solver:
-    per_horizon_ocp = OptimalControlProblem(dynamics, cost, prediction_horizon)
+    per_horizon_ocp = OptimalControlProblem(
+        dynamics, state_cost, input_cost, prediction_horizon
+    )
     inner_solver = ILQRSolver(per_horizon_ocp)
     receding_horizon_strategy = RecedingHorizonStrategy(inner_solver)
     xs, us = dynamics.rollout(x0, receding_horizon_strategy, simulation_horizon)
