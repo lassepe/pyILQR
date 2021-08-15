@@ -24,7 +24,7 @@ class SetpointTrackingCost(AbstractCost):
 
 @dataclass(frozen=True)
 class Polyline:
-    points: Sequence[np.ndarray]
+    points: np.ndarray
 
     def closest_point(self, p: np.ndarray):
         d_min = float("inf")
@@ -36,7 +36,7 @@ class Polyline:
             v = p - p_closest_candidate
             d = v.dot(v)  # type: ignore
             if d < d_min:
-                dmin = d
+                d_min = d
                 p_closest = p_closest_candidate
 
         return p_closest

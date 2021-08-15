@@ -49,3 +49,17 @@ class QuadraticCost(AbstractCost):
 
     def hessian(self, x: np.ndarray):
         return self.Q
+
+
+@dataclass
+class CompositeCost(AbstractCost):
+    components: Sequence[AbstractCost]
+
+    def cost(self, x: np.ndarray):
+        return sum(c.cost(x) for c in self.components)
+
+    def gradient(self, x: np.ndarray):
+        return sum(c.gradient(x) for c in self.components)
+
+    def hessian(self, x: np.ndarray):
+        return sum(c.hessian(x) for c in self.components)
