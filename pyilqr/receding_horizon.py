@@ -33,4 +33,5 @@ class RecedingHorizonStrategy(AbstractStrategy):
                 "Inner solver of receding horizon strategy did not converge."
             )
         self.reset_initial_strategy(OpenLoopStrategy(us))
-        return us[0]
+
+        return us[0], {"predictions": us}

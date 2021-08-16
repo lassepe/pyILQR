@@ -59,13 +59,15 @@ class AbstractDiscreteDynamics(ABC):
         xs = np.zeros((horizon + 1, n_states))
         xs[0] = x0
         us = np.zeros((horizon, n_inputs))
+        infos = []
         for t in range(horizon):
             x = xs[t]
-            u = strategy.control_input(x, t)
+            u, info = strategy.control_input(x, t)
             us[t] = u
+            infos.append(info)
             xs[t + 1] = self.next_state(x, u, t)
 
-        return xs, us
+        return xs, us, infos
 
 
 @dataclass(frozen=True)

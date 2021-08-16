@@ -32,13 +32,13 @@ def test_solve_lqr(tol=1e-5):
     assert len(strategy.stage_strategies) == ocp.horizon
 
     x0 = np.zeros(2)
-    trajectory, inputs = ocp.dynamics.rollout(x0, strategy)
+    trajectory, inputs, _ = ocp.dynamics.rollout(x0, strategy)
     assert len(trajectory) == ocp.dynamics.horizon + 1
     assert len(inputs) == ocp.dynamics.horizon
     assert math.isclose(np.linalg.norm(trajectory[-1] - x_target), 0, abs_tol=tol)
     assert math.isclose(np.linalg.norm(inputs[-1]), 0, abs_tol=tol)
 
     x0 = x_target
-    trajectory, inputs = ocp.dynamics.rollout(x0, strategy)
+    trajectory, inputs, _ = ocp.dynamics.rollout(x0, strategy)
     assert math.isclose(np.linalg.norm(inputs[0]), 0, abs_tol=tol)
     assert math.isclose(np.linalg.norm(trajectory[-1] - x_target), 0, abs_tol=tol)

@@ -28,7 +28,7 @@ class ILQRSolver:
     ) -> Tuple:
 
         has_converged = False
-        last_xop, last_uop = self.ocp.dynamics.rollout(
+        last_xop, last_uop, _ = self.ocp.dynamics.rollout(
             x0, initial_strategy, self.ocp.horizon
         )
 
@@ -118,7 +118,7 @@ class ILQRSolver:
 
         for t in range(len(last_uop)):
             x = xs[t]
-            du = local_strategy.control_input(x - last_xop[t], t)
+            du, _ = local_strategy.control_input(x - last_xop[t], t)
             u = last_uop[t] + step_size * du
             xs[t + 1] = nonlinear_dynamics.next_state(x, u, t)
             us[t] = u

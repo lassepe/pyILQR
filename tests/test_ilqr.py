@@ -18,7 +18,7 @@ def test_ilqr():
     solver = ILQRSolver(ocp)
 
     initial_strategy = FunctionStrategy(lambda x, t: np.array([0, 0]))
-    initial_xs, initial_us = dynamics.rollout(x0, initial_strategy, horizon)
+    initial_xs, initial_us, _ = dynamics.rollout(x0, initial_strategy, horizon)
     initial_cost = state_cost.trajectory_cost(initial_xs) + input_cost.trajectory_cost(
         initial_us
     )

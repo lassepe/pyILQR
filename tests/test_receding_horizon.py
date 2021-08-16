@@ -25,7 +25,7 @@ def test_receding_horizon_parking():
     )
     inner_solver = ILQRSolver(per_horizon_ocp)
     receding_horizon_strategy = RecedingHorizonStrategy(inner_solver)
-    xs, us = dynamics.rollout(x0, receding_horizon_strategy, simulation_horizon)
+    xs, us, info = dynamics.rollout(x0, receding_horizon_strategy, simulation_horizon)
     return xs, us, dynamics
     # TODO: actually sanity-check the results
 
@@ -52,7 +52,7 @@ def test_receding_horizon_path_following():
     )
     inner_solver = ILQRSolver(per_horizon_ocp)
     receding_horizon_strategy = RecedingHorizonStrategy(inner_solver)
-    xs, us = dynamics.rollout(x0, receding_horizon_strategy, simulation_horizon)
+    xs, us, infos = dynamics.rollout( x0, receding_horizon_strategy, simulation_horizon)
     return xs, us, dynamics
     # TODO: actually sanity-check the results
 

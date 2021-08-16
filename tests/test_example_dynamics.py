@@ -21,7 +21,7 @@ def test_unicycle(tol=1e-5):
     assert all(dyn_discrete.next_state(np.zeros(4), np.zeros(2)) == 0)
 
     # simulation
-    trajectory, _ = dyn.rollout(
+    trajectory, *_ = dyn.rollout(
         x0=np.zeros(4), strategy=FunctionStrategy(lambda x, k: np.zeros(2)), horizon=10
     )
     assert all(math.isclose(np.linalg.norm(x), 0, abs_tol=tol) for x in trajectory)
@@ -31,7 +31,7 @@ def visual_sanity_check():
     dyn = UnicycleDynamics(0.1)
 
     print("We would expect the unicycyle to drive in a circle at constant velocity.")
-    trajectory, _ = dyn.rollout(
+    trajectory, *_ = dyn.rollout(
         x0=np.array([0, 0, 0, 2]),
         strategy=FunctionStrategy(lambda x, k: np.array([3, 0])),
         horizon=10,
