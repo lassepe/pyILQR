@@ -52,13 +52,13 @@ def test_receding_horizon_path_following():
     )
     inner_solver = ILQRSolver(per_horizon_ocp)
     receding_horizon_strategy = RecedingHorizonStrategy(inner_solver)
-    xs, us, infos = dynamics.rollout( x0, receding_horizon_strategy, simulation_horizon)
-    return xs, us, dynamics
+    xs, us, infos = dynamics.rollout(x0, receding_horizon_strategy, simulation_horizon)
+    return xs, us, infos, dynamics
     # TODO: actually sanity-check the results
 
 
 def visual_sanity_check():
-    xs, us, dynamics = test_receding_horizon_path_following()
+    xs, us, infos, dynamics = test_receding_horizon_path_following()
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -66,12 +66,15 @@ def visual_sanity_check():
     plt.show(block=False)
     dt_target = dynamics.dt
 
-    for x in xs:
+    for x, info in zip(xs, infos):
         last_wall_time = time.monotonic()
+        pred = info["predictions"]
 
         ax.clear()
         dynamics.render_state(ax, x)
+        # TODO: render cost polyline here
         ax.plot(xs[:, 0], xs[:, 1])
+        ax.plot(pred[:, 0], pred[:, 1])
         fig.canvas.draw()
         fig.canvas.flush_events()
         dt_measured = time.monotonic() - last_wall_time

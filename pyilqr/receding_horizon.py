@@ -34,4 +34,4 @@ class RecedingHorizonStrategy(AbstractStrategy):
             )
         self.reset_initial_strategy(OpenLoopStrategy(us))
 
-        return us[0], {"predictions": us}
+        return us[0], {"predictions": xs}
