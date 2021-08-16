@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import matplotlib.axes
 
 from dataclasses import dataclass
 from typing import Sequence
@@ -79,3 +80,6 @@ class PolylineTrackingCost(AbstractCost):
         grad = np.zeros_like(x)
         grad[:2] = delta * self.weight
         return grad
+
+    def visualize(self, ax: matplotlib.axes.Axes):
+        ax.plot(self.polyline.points[:, 0], self.polyline.points[:, 1], label="Reference Polyline")

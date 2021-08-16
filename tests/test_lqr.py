@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-from pyilqr.dynamics import LinearDynamics, LinearStageDynamics
+from pyilqr.dynamics import LinearDiscreteDynamics
 from pyilqr.costs import QuadraticCost
 from pyilqr.ocp import LQRProblem
 from pyilqr.lqr import LQRSolver
@@ -11,7 +11,7 @@ def setup_double_integrator_ocp(horizon=100, dt=0.20, x_target=np.array([1, 0]))
     # a simple double integrator
     A = np.array([[1, dt], [0, 1]])
     B = np.array([[0, dt]]).T
-    dynamics = LinearDynamics([LinearStageDynamics(A, B) for _ in range(horizon)])
+    dynamics = [LinearDiscreteDynamics(0.1, A, B) for _ in range(horizon)]
 
     Q = np.eye(2)
     l = -Q @ x_target
@@ -32,13 +32,13 @@ def test_solve_lqr(tol=1e-5):
     assert len(strategy.stage_strategies) == ocp.horizon
 
     x0 = np.zeros(2)
-    trajectory, inputs, _ = ocp.dynamics.rollout(x0, strategy)
-    assert len(trajectory) == ocp.dynamics.horizon + 1
-    assert len(inputs) == ocp.dynamics.horizon
+    trajectory, inputs, _ = ocp.dynamics[0].rollout(x0, strategy, ocp.horizon)
+    assert len(trajectory) == ocp.horizon + 1
+    assert len(inputs) == ocp.horizon
     assert math.isclose(np.linalg.norm(trajectory[-1] - x_target), 0, abs_tol=tol)
     assert math.isclose(np.linalg.norm(inputs[-1]), 0, abs_tol=tol)
 
     x0 = x_target
-    trajectory, inputs, _ = ocp.dynamics.rollout(x0, strategy)
+    trajectory, inputs, _ = ocp.dynamics[0].rollout(x0, strategy, ocp.horizon)
     assert math.isclose(np.linalg.norm(inputs[0]), 0, abs_tol=tol)
     assert math.isclose(np.linalg.norm(trajectory[-1] - x_target), 0, abs_tol=tol)

@@ -17,9 +17,7 @@ class ILQRSolver:
     _lqr_solver: LQRSolver = field(init=False)
 
     def __post_init__(self):
-        self._lqr_solver = LQRSolver(
-            LQRProblem(None, None, self.ocp.horizon)  # type: ignore
-        )
+        self._lqr_solver = LQRSolver(LQRProblem(None, None, None))  # type: ignore
 
     def solve(
         self,
@@ -120,7 +118,7 @@ class ILQRSolver:
             x = xs[t]
             du, _ = local_strategy.control_input(x - last_xop[t], t)
             u = last_uop[t] + step_size * du
-            xs[t + 1] = nonlinear_dynamics.next_state(x, u, t)
+            xs[t + 1] = nonlinear_dynamics.next_state(x, u)
             us[t] = u
 
         return xs, us

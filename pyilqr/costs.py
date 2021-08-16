@@ -1,7 +1,9 @@
+import numpy as np
+import matplotlib.axes
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Sequence
-import numpy as np
 
 
 class AbstractCost(ABC):
@@ -15,6 +17,9 @@ class AbstractCost(ABC):
 
     @abstractmethod
     def hessian(self, x: np.ndarray) -> np.ndarray:
+        pass
+
+    def visualize(self, ax: matplotlib.axes.Axes):
         pass
 
     def _quadratisized(self, x, to_hessian, to_gradient) -> "QuadraticCost":
@@ -63,3 +68,7 @@ class CompositeCost(AbstractCost):
 
     def hessian(self, x: np.ndarray):
         return sum(c.hessian(x) for c in self.components)
+
+    def visualize(self, ax: matplotlib.axes.Axes):
+        for c in self.components:
+            c.visualize(ax)

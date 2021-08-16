@@ -9,7 +9,7 @@ from pyilqr.strategies import FunctionStrategy
 
 
 def test_ilqr():
-    dynamics = UnicycleDynamics()
+    dynamics = UnicycleDynamics(0.1)
     horizon = 100
     x0 = np.array([0, 0, -0.3, 0.1])
     state_cost = SetpointTrackingCost(np.eye(4), x_target=np.array([1, 1, 0, 0]))

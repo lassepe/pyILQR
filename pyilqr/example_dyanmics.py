@@ -2,11 +2,11 @@ import numpy as np
 import matplotlib.axes
 
 from dataclasses import dataclass
-from pyilqr.dynamics import AbstractSampledDynamics
+from pyilqr.dynamics import AbstractDynamics
 
 
 @dataclass(frozen=True)
-class UnicycleDynamics(AbstractSampledDynamics):
+class UnicycleDynamics(AbstractDynamics):
     # These are just for visualization
     viz_length: float = 0.1
     viz_width: float = 0.05
@@ -44,7 +44,7 @@ class UnicycleDynamics(AbstractSampledDynamics):
         B = np.array([[0, 0], [0, 0], [1, 0], [0, 1]])
         return (A, B)
 
-    def render_state(self, ax: matplotlib.axes.Axes, x: np.ndarray):
+    def visualize_state(self, ax: matplotlib.axes.Axes, x: np.ndarray):
         px, py, phi, v = x
 
         car_x_vert = [

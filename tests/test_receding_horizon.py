@@ -10,7 +10,7 @@ from pyilqr.receding_horizon import RecedingHorizonStrategy, ILQRSolver
 
 
 def test_receding_horizon_parking():
-    dynamics = UnicycleDynamics()
+    dynamics = UnicycleDynamics(0.05)
     simulation_horizon = 100
     prediction_horizon = 20
     x0 = np.array([0, 0, 0, 0.5])
@@ -31,7 +31,7 @@ def test_receding_horizon_parking():
 
 
 def test_receding_horizon_path_following():
-    dynamics = UnicycleDynamics()
+    dynamics = UnicycleDynamics(0.075)
     simulation_horizon = 200
     prediction_horizon = 10
     x0 = np.array([0, 0, 0, 0.5])
@@ -39,13 +39,30 @@ def test_receding_horizon_path_following():
     state_cost = CompositeCost(
         [
             PolylineTrackingCost(
-                Polyline(np.array([[0, 0], [1, 1], [3, 1], [3, -1], [0, -3]])), 1
+                Polyline(
+                    np.array(
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [3, 1],
+                            [4, 0],
+                            [4, -0.5],
+                            [3, -1],
+                            [2, -1],
+                            [0, -2],
+                            [-1, -1],
+                            [-1, -0.5],
+                            [0, 0],
+                        ]
+                    )
+                ),
+                0.1,
             ),
-            SetpointTrackingCost(np.diag([0, 0, 0, 1]), np.array([0, 0, 0, 1])),
+            SetpointTrackingCost(np.diag([0, 0, 0, 0.1]), np.array([0, 0, 0, 1.5])),
         ]
     )
 
-    input_cost = QuadraticCost(0.1 * np.eye(2), np.zeros(2))
+    input_cost = QuadraticCost(np.diag([1e-3, 1]), np.zeros(2))
 
     per_horizon_ocp = OptimalControlProblem(
         dynamics, state_cost, input_cost, prediction_horizon
@@ -53,28 +70,29 @@ def test_receding_horizon_path_following():
     inner_solver = ILQRSolver(per_horizon_ocp)
     receding_horizon_strategy = RecedingHorizonStrategy(inner_solver)
     xs, us, infos = dynamics.rollout(x0, receding_horizon_strategy, simulation_horizon)
-    return xs, us, infos, dynamics
+    return xs, us, infos, per_horizon_ocp
     # TODO: actually sanity-check the results
 
 
 def visual_sanity_check():
-    xs, us, infos, dynamics = test_receding_horizon_path_following()
+    xs, us, infos, per_horizon_ocp = test_receding_horizon_path_following()
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
     plt.gca().set_aspect("equal", adjustable="box")
     plt.show(block=False)
-    dt_target = dynamics.dt
+    dt_target = per_horizon_ocp.dynamics.dt
 
     for x, info in zip(xs, infos):
         last_wall_time = time.monotonic()
         pred = info["predictions"]
 
         ax.clear()
-        dynamics.render_state(ax, x)
-        # TODO: render cost polyline here
-        ax.plot(xs[:, 0], xs[:, 1])
-        ax.plot(pred[:, 0], pred[:, 1])
+        per_horizon_ocp.state_cost.visualize(ax)
+        per_horizon_ocp.dynamics.visualize_state(ax, x)
+        ax.plot(xs[:, 0], xs[:, 1], label="Closed-loop")
+        ax.plot(pred[:, 0], pred[:, 1], label="Prediction")
+        ax.legend()
         fig.canvas.draw()
         fig.canvas.flush_events()
         dt_measured = time.monotonic() - last_wall_time
