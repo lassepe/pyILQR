@@ -1,7 +1,7 @@
 import numpy as np
 
 from dataclasses import dataclass, field
-from pyilqr.ocp import OptimalControlProblem, LQRProblem
+from pyilqr.ocp import OptimalControlProblem, LQRProblem, AbstractDynamics
 from pyilqr.strategies import AbstractStrategy, AffineStrategy
 from pyilqr.lqr import LQRSolver
 from typing import Any, Tuple
@@ -10,11 +10,20 @@ from copy import copy
 
 @dataclass
 class ILQRSolver:
+    """
+    An iterative LQR solver that solve a nonlinear `OptimalControlProblem` (`ocp`) by successive
+    local linear-quadratic (LQ) approximations.
+    """
     ocp: OptimalControlProblem
+    "The nonlinear optimal control problem to be solved."
     max_iterations: int = 100
+    "The maximum number of local approximations to be computed."
     n_backtracking_steps = 5
+    "The maximum number of backtracking steps during line-search."
     verbose = False
+    "Flag to enable debug messages."
     _lqr_solver: LQRSolver = field(init=False)
+    "The inner LQR solver that solve the lq-approximations."
 
     def __post_init__(self):
         self._lqr_solver = LQRSolver(LQRProblem(None, None, None))  # type: ignore
@@ -24,6 +33,9 @@ class ILQRSolver:
         x0: np.ndarray,
         initial_strategy: AbstractStrategy,
     ) -> Tuple:
+        """
+        The actual solver routine that implements the iterative LQR algorithm.
+        """
 
         has_converged = False
         last_xop, last_uop, _ = self.ocp.dynamics.rollout(
@@ -78,6 +90,17 @@ class ILQRSolver:
         n_backtracking_steps: int,
         step_scale: float = 0.5,
     ):
+        """
+        Returns an updated operating point by perform a backtracking line-search in the direction of
+        the `local_strategy` around the previous operating point `(last_xop, last_uop)`.
+
+        - `last_xop` the previous nominal state trajectory of the system (i.e. state operating point)
+        - `last_uop` the previous nominal input trajectory of the system (i.e. input operating point)
+        - `last_cost` the cost at the previous nominal trajectory
+        - `local_strategy` the local feedback strategy that determines the step direction.
+        - `n_backtracking_steps` the maximum number of backtracking iterations during line search
+        - `step_scale` the iterative scaling factor to be used during backtracking.
+        """
 
         step_size = 1
         updated_cost = float("inf")
@@ -105,12 +128,16 @@ class ILQRSolver:
 
     def _local_rollout(
         self,
-        last_xop,
-        last_uop,
-        nonlinear_dynamics,
+        last_xop : np.ndarray,
+        last_uop : np.ndarray,
+        nonlinear_dynamics : AbstractDynamics,
         local_strategy: AffineStrategy,
-        step_size,
+        step_size: float,
     ):
+        """
+        Simulates the full `nonlinear_dynamics` for a given `local_strategy` whose gains are
+        scaled-down by the factor `step_size` (real value in (0, 1)) to adjust the step length.
+        """
         xs = copy(last_xop)
         us = copy(last_uop)
 

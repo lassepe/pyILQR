@@ -7,39 +7,61 @@ from typing import Sequence
 
 
 class AbstractCost(ABC):
+    """
+    The abstract representation of a cost model.
+
+    This class is used for both state and inputs costs
+    """
+
     @abstractmethod
     def cost(self, x: np.ndarray) -> float:
+        "Returns the instantaneous cost of being at state/input `x`"
         pass
 
     @abstractmethod
     def gradient(self, x: np.ndarray) -> np.ndarray:
+        "Returns the gradient of the instantaneous cost of being at state/input `x`"
         pass
 
     @abstractmethod
     def hessian(self, x: np.ndarray) -> np.ndarray:
+        "Returns the Hessian of the instantaneous cost of being at state/input `x`"
         pass
 
     def visualize(self, ax: matplotlib.axes.Axes):
+        """
+        Visualizes this cost on the `matplotlib` Axes if applicable
+
+        See `pyilqr.example_costs.PolylineTrackingCost` for an example.
+        """
         pass
 
-    def _quadratisized(self, x, to_hessian, to_gradient) -> "QuadraticCost":
-        H = to_hessian(x)
-        g = to_gradient(x)
-        return QuadraticCost(H, g)
+    def quadratisized(self, x) -> "QuadraticCost":
+        """
+        Returns the quadratic approximation of the cost at state/input `x`.
+        """
+        return QuadraticCost(self.hessian(x), self.gradient(x))
 
     def quadratisized_along_trajectory(
-        self, x_op: Sequence[np.ndarray]
+        self, xs: Sequence[np.ndarray]
     ) -> Sequence["QuadraticCost"]:
-        return [QuadraticCost(self.hessian(x), self.gradient(x)) for x in x_op]
+        """
+        Returns the time-varying quadratic approximation of the cost along the state/input
+        trajectory `xs`.
+        """
+        return [self.quadratisized(x) for x in xs]
 
     def trajectory_cost(self, xs) -> float:
+        """
+        Returns the total cost along the state/input trajectory `xs`.
+        """
         return sum(self.cost(x) for x in xs)
 
 
 @dataclass
 class QuadraticCost(AbstractCost):
     """
-    A simple wrapper for a quadratic cost primitive that maps a vector `x` to a scalar cost:
+    A simple quadratic cost primitive that maps a vector `x` to a scalar cost:
     x.T * Q * x + 2*x.T * l.
     """
 
@@ -58,6 +80,10 @@ class QuadraticCost(AbstractCost):
 
 @dataclass
 class CompositeCost(AbstractCost):
+    """
+    A simple wrapper that just sums up the cost of multiple cost `components`.
+    """
+
     components: Sequence[AbstractCost]
 
     def cost(self, x: np.ndarray):

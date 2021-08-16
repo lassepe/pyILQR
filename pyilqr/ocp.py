@@ -7,6 +7,7 @@ from typing import Sequence
 
 @dataclass
 class OptimalControlProblem:
+    "The description of a general finite-time optimal control problem."
     dynamics: AbstractDynamics
     state_cost: AbstractCost
     input_cost: AbstractCost
@@ -15,6 +16,7 @@ class OptimalControlProblem:
 
 @dataclass
 class LQRProblem:
+    "The description of a (discrete-time, finite-horizon) LQR problem."
     def __post_init__(self):
         if not (self.dynamics or self.state_cost or self.input_cost):
             return

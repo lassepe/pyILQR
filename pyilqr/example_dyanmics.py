@@ -7,6 +7,14 @@ from pyilqr.dynamics import AbstractDynamics
 
 @dataclass(frozen=True)
 class UnicycleDynamics(AbstractDynamics):
+    """
+    The dynamics of a 4D unicycle with state layout `x = px, py, phi, v`. Where
+    - `px` is the position along the x-axis
+    - `py` is the position along the y-axis
+    - `phi` is the orientation of the vehicle in rad.
+    - `v` is the velocity
+    """
+
     # These are just for visualization
     viz_length: float = 0.1
     viz_width: float = 0.05
