@@ -1,3 +1,6 @@
+[![test](https://github.com/lassepe/pyILQR/actions/workflows/ci.yml/badge.svg)](https://github.com/lassepe/pyILQR/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/lassepe/pyILQR/branch/main/graph/badge.svg?token=RFOqbIbGQK)](https://codecov.io/gh/lassepe/pyILQR)
+
 # pyILQR
 
 A Python implementation of the iterative linear-quadratic regulator for nonlinear optimal control.
