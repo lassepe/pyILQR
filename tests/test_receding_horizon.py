@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import time
 
+from matplotlib.animation import FuncAnimation, writers
 from pyilqr.costs import CompositeCost, QuadraticCost
 from pyilqr.example_costs import PolylineTrackingCost, SetpointTrackingCost, Polyline
 from pyilqr.example_dyanmics import UnicycleDynamics
@@ -80,24 +80,28 @@ def visual_sanity_check():
     fig = plt.figure()
     ax = fig.add_subplot(111)
     plt.gca().set_aspect("equal", adjustable="box")
-    plt.show(block=False)
-    dt_target = per_horizon_ocp.dynamics.dt
+    dt = per_horizon_ocp.dynamics.dt
 
-    for x, info in zip(xs, infos):
-        last_wall_time = time.monotonic()
+    def animate_frame(i):
+        x = xs[i]
+        info = infos[i]
+
         pred = info["predictions"]
-
         ax.clear()
         per_horizon_ocp.state_cost.visualize(ax)
-        per_horizon_ocp.dynamics.visualize_state(ax, x)
         ax.plot(xs[:, 0], xs[:, 1], label="Closed-loop")
+        per_horizon_ocp.dynamics.visualize_state(ax, x)
         ax.plot(pred[:, 0], pred[:, 1], label="Prediction")
         ax.legend()
         fig.canvas.draw()
         fig.canvas.flush_events()
-        dt_measured = time.monotonic() - last_wall_time
-        time_to_sleep = max(0, dt_target - dt_measured)
-        time.sleep(time_to_sleep)
+
+    animation = FuncAnimation(
+        fig, func=animate_frame, frames=range(len(infos)), interval=1
+    )
+
+    writer = writers["ffmpeg"](fps=1/dt)
+    animation.save("test.mp4", writer, dpi=300)
 
 
 if __name__ == "__main__":
