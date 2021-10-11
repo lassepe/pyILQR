@@ -1,7 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Callable, Tuple, Union
+from typing import Dict, Callable, List, Tuple, Union
 
 
 class AbstractStrategy(ABC):
@@ -21,7 +21,7 @@ class AffineStageStrategy:
 
 @dataclass(frozen=True)
 class AffineStrategy(AbstractStrategy):
-    stage_strategies: list[AffineStageStrategy]
+    stage_strategies: List[AffineStageStrategy]
 
     def control_input(self, x: np.ndarray, t: int):
         return self.stage_strategies[t].control_input(x)
