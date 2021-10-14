@@ -2,7 +2,7 @@ import numpy as np
 
 from pyilqr.costs import QuadraticCost
 from pyilqr.example_costs import SetpointTrackingCost
-from pyilqr.example_dyanmics import UnicycleDynamics
+from pyilqr.example_dynamics import UnicycleDynamics
 from pyilqr.ocp import OptimalControlProblem
 from pyilqr.ilqr import ILQRSolver
 from pyilqr.strategies import FunctionStrategy

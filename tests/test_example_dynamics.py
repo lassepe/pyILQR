@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-from pyilqr.example_dyanmics import UnicycleDynamics
+from pyilqr.example_dynamics import UnicycleDynamics
 from pyilqr.strategies import FunctionStrategy
 
 import matplotlib.pyplot as plt

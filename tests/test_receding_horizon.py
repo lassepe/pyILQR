@@ -4,7 +4,7 @@ import time
 
 from pyilqr.costs import CompositeCost, QuadraticCost
 from pyilqr.example_costs import PolylineTrackingCost, SetpointTrackingCost, Polyline
-from pyilqr.example_dyanmics import UnicycleDynamics
+from pyilqr.example_dynamics import UnicycleDynamics
 from pyilqr.ocp import OptimalControlProblem
 from pyilqr.receding_horizon import RecedingHorizonStrategy, ILQRSolver
 
