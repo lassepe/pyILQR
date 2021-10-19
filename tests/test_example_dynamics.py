@@ -1,10 +1,29 @@
 import numpy as np
 import math
 
-from pyilqr.example_dynamics import UnicycleDynamics
+from pyilqr.example_dynamics import UnicycleDynamics, BicycleDynamics
 from pyilqr.strategies import FunctionStrategy
 
 import matplotlib.pyplot as plt
+
+def test_bicycle(tol=1e-5):
+    dyn = BicycleDynamics(0.2)
+    # properties
+    assert dyn.dt == 0.2
+    # basic dynamics
+    assert all(dyn.dx(x=np.zeros(4), u=np.zeros(2)) == np.zeros(4))
+    # linearization
+    x_op, u_op = np.random.rand(4), np.random.rand(2)
+    dyn_discrete = dyn.linearized_discrete(x_op, u_op)
+    # for zero deviation from the operating point the we should predict no deviation from the future
+    # operating point (since the linearization only predicts the local deviation dynamics)
+    assert all(dyn_discrete.next_state(np.zeros(4), np.zeros(2)) == 0)
+
+    # simulation
+    trajectory, *_ = dyn.rollout(
+        x0=np.zeros(4), strategy=FunctionStrategy(lambda x, k: np.zeros(2)), horizon=10
+    )
+    assert all(math.isclose(np.linalg.norm(x), 0, abs_tol=tol) for x in trajectory)
 
 
 def test_unicycle(tol=1e-5):
