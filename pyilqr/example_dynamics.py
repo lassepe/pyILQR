@@ -56,6 +56,24 @@ class BicycleDynamics(AbstractDynamics):
         B = np.array([[0, 0], [0, 0], [v / self.L * dtDphi, 0], [0, self.av]])
         return (A, B)
 
+    def visualize_state(self, ax: matplotlib.axes.Axes, x: np.ndarray):
+        px, py, phi, v = x
+
+        car_x_vert = [
+            px + self.viz_length / 2 * np.cos(phi) - self.viz_width / 2 * np.sin(phi),
+            px + self.viz_length / 2 * np.cos(phi) + self.viz_width / 2 * np.sin(phi),
+            px - self.viz_length / 2 * np.cos(phi) + self.viz_width / 2 * np.sin(phi),
+            px - self.viz_length / 2 * np.cos(phi) - self.viz_width / 2 * np.sin(phi),
+        ]
+
+        car_y_vert = [
+            py + self.viz_width / 2 * np.cos(phi) + self.viz_length / 2 * np.sin(phi),
+            py - self.viz_width / 2 * np.cos(phi) + self.viz_length / 2 * np.sin(phi),
+            py - self.viz_width / 2 * np.cos(phi) - self.viz_length / 2 * np.sin(phi),
+            py + self.viz_width / 2 * np.cos(phi) - self.viz_length / 2 * np.sin(phi),
+        ]
+
+        ax.fill(car_x_vert, car_y_vert)
 
 @dataclass(frozen=True)
 class UnicycleDynamics(AbstractDynamics):
