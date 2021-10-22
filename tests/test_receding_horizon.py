@@ -11,7 +11,7 @@ from pyilqr.receding_horizon import RecedingHorizonStrategy, ILQRSolver
 
 def test_receding_horizon_parking():
     dynamics = UnicycleDynamics(0.05)
-    simulation_horizon = 100
+    simulation_horizon = 50
     prediction_horizon = 20
     x0 = np.array([0, 0, 0, 0.5])
     x_target = np.array([2, 1, 0, 0])
@@ -101,7 +101,7 @@ def visual_sanity_check():
     )
 
     writer = writers["ffmpeg"](fps=1/dt)
-    animation.save("test.mp4", writer, dpi=300)
+    animation.save("test.mp4", writer, dpi=50)
 
 
 if __name__ == "__main__":
