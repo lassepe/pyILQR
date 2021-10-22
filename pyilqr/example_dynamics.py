@@ -16,9 +16,13 @@ class BicycleDynamics(AbstractDynamics):
     """
 
     # These come from system identification
-    L: float = 2.69989371
-    av: float = 5.93727029
-    bv: float = -0.21911138
+    L: float = 2.7
+    av: float = 5.9
+    bv: float = -0.22
+
+    # These are just for visualization
+    viz_length: float = 0.1
+    viz_width: float = 0.05
 
     @property
     def dims(self):
