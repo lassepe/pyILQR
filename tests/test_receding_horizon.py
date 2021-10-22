@@ -4,7 +4,7 @@ import time
 
 from pyilqr.costs import CompositeCost, QuadraticCost
 from pyilqr.example_costs import PolylineTrackingCost, SetpointTrackingCost, Polyline
-from pyilqr.example_dynamics import UnicycleDynamics
+from pyilqr.example_dynamics import UnicycleDynamics, BicycleDynamics
 from pyilqr.ocp import OptimalControlProblem
 from pyilqr.receding_horizon import RecedingHorizonStrategy, ILQRSolver
 
@@ -30,8 +30,7 @@ def test_receding_horizon_parking():
     # TODO: actually sanity-check the results
 
 
-def test_receding_horizon_path_following():
-    dynamics = UnicycleDynamics(0.075)
+def _test_receding_horizon_path_following(dynamics=UnicycleDynamics(0.075)):
     simulation_horizon = 200
     prediction_horizon = 10
     x0 = np.array([0, 0, 0, 0.5])
@@ -74,8 +73,16 @@ def test_receding_horizon_path_following():
     # TODO: actually sanity-check the results
 
 
-def visual_sanity_check():
-    xs, us, infos, per_horizon_ocp = test_receding_horizon_path_following()
+def test_receding_horizon_path_following_unicycle():
+    _test_receding_horizon_path_following(dynamics=UnicycleDynamics(0.075))
+
+
+def test_receding_horizon_path_following_bicycle():
+    _test_receding_horizon_path_following(dynamics=BicycleDynamics(0.075))
+
+
+def visual_sanity_check(dynamics):
+    xs, us, infos, per_horizon_ocp = _test_receding_horizon_path_following(dynamics)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -101,4 +108,5 @@ def visual_sanity_check():
 
 
 if __name__ == "__main__":
-    visual_sanity_check()
+    visual_sanity_check(UnicycleDynamics(0.075))
+    visual_sanity_check(BicycleDynamics(0.075))
