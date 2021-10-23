@@ -19,15 +19,19 @@ class ILQRSolver:
     "The nonlinear optimal control problem to be solved."
     max_iterations: int = 100
     "The maximum number of local approximations to be computed."
-    n_backtracking_steps: int = 5
+    n_backtracking_steps: int = 10
     "The maximum number of backtracking steps during line-search."
-    default_regularization: float = 0.01
+    default_regularization: float = 0.0
     "The default regularization that is added to the control cost R"
     regularization_step_size: float = 0.1
     "The amount by which the regularization is increased if an LQR approximation is illconditioned"
     n_regularization_steps: int = 5
     "The number of times regularization is increased before giving up."
-    verbose: bool = False
+    convergence_tolerance: float = 1e-4
+    "The on the Q-value gradient that needs to be met in order to claim convergence."
+    sufficient_decrease_tolerance: float = 1e-3
+    "The minimum relative decrease required to accept a step during line search."
+    verbose: bool = True
     "Flag to enable debug messages."
     _lqr_solver: LQRSolver = field(init=False)
     "The inner LQR solver that solve the lq-approximations."
@@ -56,8 +60,11 @@ class ILQRSolver:
 
         regularization = self.default_regularization
 
-        for it in range(self.max_iterations):
+        for _ in range(self.max_iterations):
             if has_converged or not sufficient_decrease:
+                if self.verbose:
+                    print("has_converged", has_converged)
+                    print("sufficient_decrease", sufficient_decrease)
                 break
             self._lqr_solver.ocp.state_cost = (
                 self.ocp.state_cost.quadratisized_along_trajectory(last_xop)
@@ -85,6 +92,10 @@ class ILQRSolver:
             if not lqr_is_convex:
                 raise RuntimeError("Unable to convexify cost.")
 
+            if expected_decrease < self.convergence_tolerance:
+                has_converged = True
+                continue
+
             (
                 last_xop,
                 last_uop,
@@ -95,16 +106,15 @@ class ILQRSolver:
                 last_uop,
                 last_cost,
                 local_strategy,
+                expected_decrease,
                 self.n_backtracking_steps,
             )
 
             if self.verbose:
                 print("Actual decrease:", last_cost - updated_cost)
                 print("Expected decrease:", expected_decrease)
-                print("Sufficient decrease:", sufficient_decrease)
             last_cost = updated_cost
             # This could be replaced with a more accurate convergence criterion.
-            has_converged = expected_decrease < 1e-5
 
         return last_xop, last_uop, has_converged
 
@@ -114,6 +124,7 @@ class ILQRSolver:
         last_uop,
         last_cost: float,
         local_strategy: AffineStrategy,
+        expected_decrease: float,
         n_backtracking_steps: int,
         step_scale: float = 0.5,
     ):
@@ -141,11 +152,16 @@ class ILQRSolver:
             updated_cost = self.ocp.state_cost.trajectory_cost(
                 updated_xop
             ) + self.ocp.input_cost.trajectory_cost(updated_uop)
-            # TODO: technically, we would want to have some *sufficient* decrease.
-            if updated_cost < last_cost:
+            if (
+                step_size * (last_cost - updated_cost)
+                > expected_decrease * self.sufficient_decrease_tolerance
+            ):
                 sufficient_decrease = True
                 break
             step_size *= step_scale
+
+        if self.verbose:
+            print("step_size", step_size)
 
         if not sufficient_decrease:
             updated_xop, updated_uop = last_xop, last_uop
