@@ -17,6 +17,7 @@ class OptimalControlProblem:
 @dataclass
 class LQRProblem:
     "The description of a (discrete-time, finite-horizon) LQR problem."
+
     def __post_init__(self):
         if not (self.dynamics or self.state_cost or self.input_cost):
             return

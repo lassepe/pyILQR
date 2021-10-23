@@ -6,7 +6,9 @@ from typing import Dict, Callable, List, Tuple, Union
 
 class AbstractStrategy(ABC):
     @abstractmethod
-    def control_input(self, x: np.ndarray, t: int) -> Tuple[np.ndarray, Union[Dict, None]]:
+    def control_input(
+        self, x: np.ndarray, t: int
+    ) -> Tuple[np.ndarray, Union[Dict, None]]:
         pass
 
 

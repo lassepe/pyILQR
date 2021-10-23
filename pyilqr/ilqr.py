@@ -14,6 +14,7 @@ class ILQRSolver:
     An iterative LQR solver that solve a nonlinear `OptimalControlProblem` (`ocp`) by successive
     local linear-quadratic (LQ) approximations.
     """
+
     ocp: OptimalControlProblem
     "The nonlinear optimal control problem to be solved."
     max_iterations: int = 100
@@ -128,9 +129,9 @@ class ILQRSolver:
 
     def _local_rollout(
         self,
-        last_xop : np.ndarray,
-        last_uop : np.ndarray,
-        nonlinear_dynamics : AbstractDynamics,
+        last_xop: np.ndarray,
+        last_uop: np.ndarray,
+        nonlinear_dynamics: AbstractDynamics,
         local_strategy: AffineStrategy,
         step_size: float,
     ):

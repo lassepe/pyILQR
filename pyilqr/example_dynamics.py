@@ -79,6 +79,7 @@ class BicycleDynamics(AbstractDynamics):
 
         ax.fill(car_x_vert, car_y_vert)
 
+
 @dataclass(frozen=True)
 class UnicycleDynamics(AbstractDynamics):
     """
