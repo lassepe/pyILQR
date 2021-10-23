@@ -1,8 +1,12 @@
 import numpy as np
 from dataclasses import dataclass
+
+from numpy.linalg import eigvals
 from pyilqr.strategies import AffineStrategy, AffineStageStrategy
 from pyilqr.ocp import LQRProblem
 
+class IllconditionedProblemError(Exception):
+    pass
 
 @dataclass
 class LQRSolver:
@@ -15,13 +19,15 @@ class LQRSolver:
 
     ocp: LQRProblem
 
-    def solve(self):
+    def solve(self, regularization = 0):
         H = len(self.ocp.dynamics)
         # inialize the cost2go estimate
         _terminal_cost = self.ocp.state_cost[H]
         Z, z = _terminal_cost.Q, _terminal_cost.l
+        expected_decrease = 0
 
         strategy = AffineStrategy([])
+        rhoI = regularization * np.eye(self.ocp.dynamics[0].dims[1])
 
         # solve for the value function and feedback gains backward in time
         for k in reversed(range(H)):
@@ -31,7 +37,7 @@ class LQRSolver:
 
             # setup system of equations
             BZ = B.T @ Z
-            S = R + BZ @ B
+            S = R + BZ @ B + rhoI
             YP = BZ @ A
             Ya = B.T @ z + r
 
@@ -48,4 +54,14 @@ class LQRSolver:
             z = F.T @ (z + Z @ b) + l + PR @ a - P.T @ r
             Z = F.T @ Z @ F + Q + PR @ P
 
-        return strategy
+            # gradient of the state-action-cost (Q-cost)
+            q_decrease_step = a.T @ Ya
+            if not (q_decrease_step >= 0):
+                print("Invalid step")
+                print(eigvals(S))
+                print(q_decrease_step)
+                raise(IllconditionedProblemError(f"q_decrease_step was: {q_decrease_step}"))
+            expected_decrease += q_decrease_step
+            #q += norm(Ya)
+
+        return strategy, expected_decrease

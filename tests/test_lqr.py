@@ -28,8 +28,9 @@ def setup_double_integrator_ocp(horizon=100, dt=0.20, x_target=np.array([1, 0]))
 def test_solve_lqr(tol=1e-5):
     ocp, x_target = setup_double_integrator_ocp()
     solver = LQRSolver(ocp)
-    strategy = solver.solve()
+    strategy, expected_decrease = solver.solve()
     assert len(strategy.stage_strategies) == ocp.horizon
+    assert expected_decrease >= 0
 
     x0 = np.zeros(2)
     trajectory, inputs, _ = ocp.dynamics[0].rollout(x0, strategy, ocp.horizon)

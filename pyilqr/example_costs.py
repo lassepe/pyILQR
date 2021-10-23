@@ -118,7 +118,5 @@ class PolylineTrackingCost(AbstractCost):
 
     def visualize(self, ax: matplotlib.axes.Axes):
         ax.plot(
-            self.polyline.points[:, 0],
-            self.polyline.points[:, 1],
-            label="Reference Polyline",
+            self.polyline.points[:, 0], self.polyline.points[:, 1], label="Reference"
         )
