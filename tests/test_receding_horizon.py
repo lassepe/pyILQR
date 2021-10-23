@@ -3,13 +3,18 @@ import numpy as np
 
 from matplotlib.animation import FuncAnimation, writers
 from pyilqr.costs import CompositeCost, QuadraticCost
-from pyilqr.example_costs import PolylineTrackingCost, SetpointTrackingCost, Polyline
-from pyilqr.example_dyanmics import UnicycleDynamics
+from pyilqr.example_costs import (
+    PolylineTrackingCost,
+    SetpointTrackingCost,
+    Polyline,
+    SoftConstraintCost,
+)
+from pyilqr.example_dynamics import UnicycleDynamics, BicycleDynamics
 from pyilqr.ocp import OptimalControlProblem
 from pyilqr.receding_horizon import RecedingHorizonStrategy, ILQRSolver
 
 
-def test_receding_horizon_parking():
+def test_receding_horizon_parking_unicycle():
     dynamics = UnicycleDynamics(0.05)
     simulation_horizon = 50
     prediction_horizon = 20
@@ -30,10 +35,10 @@ def test_receding_horizon_parking():
     # TODO: actually sanity-check the results
 
 
-def test_receding_horizon_path_following():
+def test_receding_horizon_path_following_unicycle():
     dynamics = UnicycleDynamics(0.075)
     simulation_horizon = 200
-    prediction_horizon = 10
+    prediction_horizon = 20
     x0 = np.array([0, 0, 0, 0.5])
 
     state_cost = CompositeCost(
@@ -62,7 +67,11 @@ def test_receding_horizon_path_following():
         ]
     )
 
-    input_cost = QuadraticCost(np.diag([1e-3, 1]), np.zeros(2))
+    input_cost = CompositeCost(
+        [
+            QuadraticCost(np.diag([1e-3, 1]), np.zeros(2)),
+        ]
+    )
 
     per_horizon_ocp = OptimalControlProblem(
         dynamics, state_cost, input_cost, prediction_horizon
@@ -74,8 +83,57 @@ def test_receding_horizon_path_following():
     # TODO: actually sanity-check the results
 
 
-def visual_sanity_check():
-    xs, us, infos, per_horizon_ocp = test_receding_horizon_path_following()
+def test_receding_horizon_path_following_bicycle():
+    dynamics = BicycleDynamics(0.075)
+    simulation_horizon = 100
+    prediction_horizon = 20
+    x0 = np.array([0, 0, 0, 0.01, 0])
+
+    state_cost = CompositeCost(
+        [
+            PolylineTrackingCost(
+                Polyline(
+                    np.array(
+                        [
+                            [0, 0],
+                            [1, 0],
+                            [2, 1],
+                            [3, 3],
+                            [4, 3.5]
+                        ]
+                    )
+                ),
+                3.0,
+            ),
+            SetpointTrackingCost(
+                np.diag([0, 0, 0, 0.01, 0]), np.array([0, 0, 0, 2.0, 0.2])
+            ),
+            SoftConstraintCost(
+                np.diag([0, 0, 0, 0, 10]),
+                np.array([0, 0, 0, 0, -1.2]),
+                np.array([0, 0, 0, 1.0, 1.2]),
+            ),
+        ]
+    )
+
+    input_cost = QuadraticCost(np.diag([1, 1e-3]), np.zeros(2))
+
+    per_horizon_ocp = OptimalControlProblem(
+        dynamics, state_cost, input_cost, prediction_horizon
+    )
+    inner_solver = ILQRSolver(per_horizon_ocp)
+    receding_horizon_strategy = RecedingHorizonStrategy(inner_solver)
+    xs, us, infos = dynamics.rollout(x0, receding_horizon_strategy, simulation_horizon)
+    return xs, us, infos, per_horizon_ocp
+    # TODO: actually sanity-check the results
+
+
+# def test_receding_horizon_path_following_unicycle():
+#    _test_receding_horizon_path_following(dynamics=UnicycleDynamics(0.075))
+
+
+def visual_sanity_check(f):
+    xs, us, infos, per_horizon_ocp = f()
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -100,9 +158,10 @@ def visual_sanity_check():
         fig, func=animate_frame, frames=range(len(infos)), interval=1
     )
 
-    writer = writers["ffmpeg"](fps=1/dt)
-    animation.save("test.mp4", writer, dpi=50)
+    writer = writers["ffmpeg"](fps=1 / dt)
+    animation.save("test.mp4", writer, dpi=200)
 
 
 if __name__ == "__main__":
-    visual_sanity_check()
+    visual_sanity_check(test_receding_horizon_path_following_bicycle)
+    # visual_sanity_check(test_receding_horizon_path_following_unicycle)

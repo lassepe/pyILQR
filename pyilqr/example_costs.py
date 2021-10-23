@@ -8,6 +8,40 @@ from pyilqr.costs import AbstractCost
 
 
 @dataclass
+class SoftConstraintCost(AbstractCost):
+    Q: np.ndarray
+    x_min: np.ndarray
+    x_max: np.ndarray
+
+    def cost(self, x: np.ndarray):
+        ex_min = x - self.x_min
+        ex_max = x - self.x_max
+        ex = np.zeros_like(x)
+        min_mask = x < self.x_min
+        max_mask = x > self.x_max
+        ex[min_mask] = ex_min[min_mask]
+        ex[max_mask] = ex_max[max_mask]
+        return 0.5 * ex.T @ self.Q @ ex
+
+    def gradient(self, x: np.ndarray):
+        ex_min = x - self.x_min
+        ex_max = x - self.x_max
+        ex = np.zeros_like(x)
+        min_mask = x < self.x_min
+        max_mask = x > self.x_max
+        ex[min_mask] = ex_min[min_mask]
+        ex[max_mask] = ex_max[max_mask]
+        return self.Q @ ex
+
+    def hessian(self, x: np.ndarray):
+        active_vector_mask = (x < self.x_min) | (x > self.x_max)
+        active_matrix_mask = np.outer(active_vector_mask, active_vector_mask)
+        Q = np.zeros_like(self.Q)
+        Q[active_matrix_mask] = self.Q[active_matrix_mask]
+        return Q
+
+
+@dataclass
 class SetpointTrackingCost(AbstractCost):
     Q: np.ndarray
     x_target: np.ndarray
@@ -82,4 +116,6 @@ class PolylineTrackingCost(AbstractCost):
         return grad
 
     def visualize(self, ax: matplotlib.axes.Axes):
-        ax.plot(self.polyline.points[:, 0], self.polyline.points[:, 1], label="Reference")
+        ax.plot(
+            self.polyline.points[:, 0], self.polyline.points[:, 1], label="Reference"
+        )

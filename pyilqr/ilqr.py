@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pyilqr.ocp import OptimalControlProblem, LQRProblem, AbstractDynamics
 from pyilqr.strategies import AbstractStrategy, AffineStrategy
 from pyilqr.lqr import IllconditionedProblemError, LQRSolver
-from typing import Any, Tuple
+from typing import Tuple
 from copy import copy
 
 
@@ -14,13 +14,24 @@ class ILQRSolver:
     An iterative LQR solver that solve a nonlinear `OptimalControlProblem` (`ocp`) by successive
     local linear-quadratic (LQ) approximations.
     """
+
     ocp: OptimalControlProblem
     "The nonlinear optimal control problem to be solved."
     max_iterations: int = 100
     "The maximum number of local approximations to be computed."
-    n_backtracking_steps = 5
+    n_backtracking_steps: int = 10
     "The maximum number of backtracking steps during line-search."
-    verbose = False
+    default_regularization: float = 1e-3
+    "The default regularization that is added to the control cost R"
+    regularization_step_upscale: float = 2
+    "The amount by which the regularization is increased if an LQR approximation is illconditioned or line-search fails to find a descent direction."
+    regularization_step_downscale: float = 0.9
+    "The amount by which the regularization is decreased if sufficient decrease is achieved."
+    convergence_tolerance: float = 1e-4
+    "The on the Q-value gradient that needs to be met in order to claim convergence."
+    sufficient_decrease_tolerance: float = 1e-3
+    "The minimum relative decrease required to accept a step during line search."
+    verbose: bool = False
     "Flag to enable debug messages."
     _lqr_solver: LQRSolver = field(init=False)
     "The inner LQR solver that solve the lq-approximations."
@@ -38,7 +49,6 @@ class ILQRSolver:
         """
 
         has_converged = False
-        sufficient_decrease = True
         last_xop, last_uop, _ = self.ocp.dynamics.rollout(
             x0, initial_strategy, self.ocp.horizon
         )
@@ -47,11 +57,10 @@ class ILQRSolver:
             last_xop
         ) + self.ocp.input_cost.trajectory_cost(last_uop)
 
-        max_regularization_steps = 5
-        regularization = 0
+        regularization = self.default_regularization
 
-        for it in range(self.max_iterations):
-            if has_converged or not sufficient_decrease:
+        for _ in range(self.max_iterations):
+            if has_converged:
                 break
             self._lqr_solver.ocp.state_cost = (
                 self.ocp.state_cost.quadratisized_along_trajectory(last_xop)
@@ -62,36 +71,45 @@ class ILQRSolver:
             self._lqr_solver.ocp.dynamics = (
                 self.ocp.dynamics.linearized_along_trajectory(last_xop, last_uop)
             )
+            try:
+                local_strategy, expected_decrease = self._lqr_solver.solve(
+                    regularization
+                )
+                assert expected_decrease >= 0
+                lqr_is_convex = True
+            except IllconditionedProblemError:
+                if self.verbose:
+                    print("regularization added")
+                regularization *= self.regularization_step_upscale
+                continue
 
-            lqr_is_convex = False
-            for _ in range(max_regularization_steps):
-                if lqr_is_convex:
-                    break
-                try:
-                    local_strategy, expected_decrease = self._lqr_solver.solve(regularization)
-                    lqr_is_convex = True
-                except IllconditionedProblemError:
-                    regularization += 0.01
+            if expected_decrease < self.convergence_tolerance:
+                has_converged = True
+                continue
 
             (
                 last_xop,
                 last_uop,
                 updated_cost,
-                sufficient_decrease
+                sufficient_decrease,
             ) = self._update_operating_point(
                 last_xop,
                 last_uop,
                 last_cost,
                 local_strategy,
+                expected_decrease,
                 self.n_backtracking_steps,
             )
 
             if self.verbose:
-                print("Actual decrease:", updated_cost - last_cost)
-                print("Expetcted decrease:", expected_decrease)
+                print("Actual decrease:", last_cost - updated_cost)
+                print("Expected decrease:", expected_decrease)
+                print("regularization:", regularization)
             last_cost = updated_cost
-            # This could be replaced with a more accurate convergence criterion.
-            has_converged = expected_decrease < 1e-5
+            if sufficient_decrease:
+                regularization *= self.regularization_step_downscale
+            else:
+                regularization *= self.regularization_step_upscale
 
         return last_xop, last_uop, has_converged
 
@@ -101,6 +119,7 @@ class ILQRSolver:
         last_uop,
         last_cost: float,
         local_strategy: AffineStrategy,
+        expected_decrease: float,
         n_backtracking_steps: int,
         step_scale: float = 0.5,
     ):
@@ -119,6 +138,7 @@ class ILQRSolver:
         step_size = 1
         updated_cost = float("inf")
         updated_xop, updated_uop = None, None
+        sufficient_decrease = False
 
         for _ in range(n_backtracking_steps):
             updated_xop, updated_uop = self._local_rollout(
@@ -127,11 +147,16 @@ class ILQRSolver:
             updated_cost = self.ocp.state_cost.trajectory_cost(
                 updated_xop
             ) + self.ocp.input_cost.trajectory_cost(updated_uop)
-            # TODO: technically, we would want to have some *sufficient* decrease.
-            if updated_cost < last_cost:
+            if (
+                step_size * (last_cost - updated_cost)
+                > expected_decrease * self.sufficient_decrease_tolerance
+            ):
                 sufficient_decrease = True
                 break
             step_size *= step_scale
+
+        if self.verbose:
+            print("step_size", step_size)
 
         if not sufficient_decrease:
             updated_xop, updated_uop = last_xop, last_uop
@@ -141,9 +166,9 @@ class ILQRSolver:
 
     def _local_rollout(
         self,
-        last_xop : np.ndarray,
-        last_uop : np.ndarray,
-        nonlinear_dynamics : AbstractDynamics,
+        last_xop: np.ndarray,
+        last_uop: np.ndarray,
+        nonlinear_dynamics: AbstractDynamics,
         local_strategy: AffineStrategy,
         step_size: float,
     ):
@@ -156,8 +181,8 @@ class ILQRSolver:
 
         for t in range(len(last_uop)):
             x = xs[t]
-            du, _ = local_strategy.control_input(x - last_xop[t], t)
-            u = last_uop[t] + step_size * du
+            du, _ = local_strategy.control_input(x - last_xop[t], t, scaling=step_size)
+            u = last_uop[t] + du
             xs[t + 1] = nonlinear_dynamics.next_state(x, u)
             us[t] = u
 

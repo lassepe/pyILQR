@@ -30,7 +30,7 @@ class AbstractDynamics(ABC):
     available.
 
     For an example of a child class that implements this interface see
-    `pyilqr.example_dyanmics.UnicycleDynamics`.
+    `pyilqr.example_dynamics.UnicycleDynamics`.
     """
 
     dt: float
