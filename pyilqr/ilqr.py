@@ -31,7 +31,7 @@ class ILQRSolver:
     "The on the Q-value gradient that needs to be met in order to claim convergence."
     sufficient_decrease_tolerance: float = 1e-3
     "The minimum relative decrease required to accept a step during line search."
-    verbose: bool = True
+    verbose: bool = False
     "Flag to enable debug messages."
     _lqr_solver: LQRSolver = field(init=False)
     "The inner LQR solver that solve the lq-approximations."
