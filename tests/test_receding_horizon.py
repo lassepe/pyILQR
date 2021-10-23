@@ -78,8 +78,8 @@ def test_receding_horizon_path_following_unicycle():
 
 
 # This test still fails
-# def test_receding_horizon_path_following_bicycle():
-#   _test_receding_horizon_path_following(dynamics=BicycleDynamics(0.075))
+def test_receding_horizon_path_following_bicycle():
+  _test_receding_horizon_path_following(dynamics=BicycleDynamics(0.075))
 
 
 def visual_sanity_check(dynamics):
@@ -109,9 +109,9 @@ def visual_sanity_check(dynamics):
     )
 
     writer = writers["ffmpeg"](fps=1/dt)
-    animation.save("test.mp4", writer, dpi=50)
+    animation.save("test.mp4", writer, dpi=200)
 
 
 if __name__ == "__main__":
-    visual_sanity_check(UnicycleDynamics(0.075))
-    # visual_sanity_check(BicycleDynamics(0.075))
+    # visual_sanity_check(UnicycleDynamics(0.075))
+    visual_sanity_check(BicycleDynamics(0.075))
