@@ -28,9 +28,10 @@ class SoftConstraintCost(AbstractCost):
         ex_max = x - self.x_max
 
         ex = np.zeros_like(x)
-
-        ex[x < self.x_min] = ex_min[x < self.x_min]
-        ex[x >= self.x_max] = ex_max[x >= self.x_max]
+        min_mask = x < self.x_min
+        ex[min_mask] = ex_min[min_mask]
+        max_mask = x > self.x_max
+        ex[max_mask] = ex_max[max_mask]
         return self.Q @ ex
 
     def hessian(self, x: np.ndarray):
