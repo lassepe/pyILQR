@@ -157,8 +157,8 @@ class ILQRSolver:
 
         for t in range(len(last_uop)):
             x = xs[t]
-            du, _ = local_strategy.control_input(x - last_xop[t], t)
-            u = last_uop[t] + step_size * du
+            du, _ = local_strategy.control_input(x - last_xop[t], t, scaling=step_size)
+            u = last_uop[t] + du
             xs[t + 1] = nonlinear_dynamics.next_state(x, u)
             us[t] = u
 
