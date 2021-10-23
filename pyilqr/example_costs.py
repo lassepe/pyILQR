@@ -35,7 +35,7 @@ class SoftConstraintCost(AbstractCost):
         return self.Q @ ex
 
     def hessian(self, x: np.ndarray):
-        active_vector_mask = x < self.x_min | x > self.x_max
+        active_vector_mask = (x < self.x_min) | (x > self.x_max)
         active_matrix_mask = np.outer(active_vector_mask, active_vector_mask)
         Q = np.zeros_like(self.Q)
         Q[active_matrix_mask] = self.Q[active_matrix_mask]
