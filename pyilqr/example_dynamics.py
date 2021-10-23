@@ -8,11 +8,12 @@ from pyilqr.dynamics import AbstractDynamics
 @dataclass(frozen=True)
 class BicycleDynamics(AbstractDynamics):
     """
-    The dynamics of a 4D Bicycle with state layout `x = px, py, phi, v`. Where
+    The dynamics of a 4D Bicycle with state layout `x = px, py, phi, v, delta`. Where
     - `px` is the position along the x-axis
     - `py` is the position along the y-axis
     - `phi` is the orientation of the vehicle in rad.
     - `v` is the velocity
+    - `delta` the steering angle
     """
 
     # These come from system identification
@@ -26,42 +27,44 @@ class BicycleDynamics(AbstractDynamics):
 
     @property
     def dims(self):
-        return 4, 2
+        return 5, 2
 
     def dx(self, x: np.ndarray, u: np.ndarray, t: float = 0):
         # state layout:
-        px, py, phi, v = x
+        px, py, phi, v, delta = x
         # input layout:
-        dphi, dv = u
+        dv, ddelta = u
         return np.array(
             [
                 v * np.cos(phi),
                 v * np.sin(phi),
-                v * np.tan(dphi) / self.L,
+                v * np.tan(delta) / self.L,
                 self.av * dv + self.bv * v,
+                ddelta,
             ]
         )
 
     def linearized_continuous(self, x: np.ndarray, u: np.ndarray):
-        px, py, phi, v = x
-        dphi, dv = u
+        px, py, phi, v, delta = x
+        dv, ddelta = u
         sPhi = np.sin(phi)
         cPhi = np.cos(phi)
-        tDphi = np.tan(dphi)
-        dtDphi = np.cos(dphi) ** (-2)
+        tdelta = np.tan(delta)
+        dtdelta = np.cos(delta) ** (-2)
         A = np.array(
             [
-                [0, 0, -v * sPhi, cPhi],
-                [0, 0, v * cPhi, sPhi],
-                [0, 0, 0, tDphi / self.L],
-                [0, 0, 0, self.bv],
+                [0, 0, -v * sPhi, cPhi, 0],
+                [0, 0, v * cPhi, sPhi, 0],
+                [0, 0, 0, tdelta / self.L, v * dtdelta / self.L],
+                [0, 0, 0, self.bv, 0],
+                [0, 0, 0, 0, 0],
             ]
         )
-        B = np.array([[0, 0], [0, 0], [v / self.L * dtDphi, 0], [0, self.av]])
+        B = np.array([[0, 0], [0, 0], [0, 0], [self.av, 0], [0, 1]])
         return (A, B)
 
     def visualize_state(self, ax: matplotlib.axes.Axes, x: np.ndarray):
-        px, py, phi, v = x
+        px, py, phi, v, delta = x
 
         car_x_vert = [
             px + self.viz_length / 2 * np.cos(phi) - self.viz_width / 2 * np.sin(phi),

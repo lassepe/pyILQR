@@ -16,21 +16,20 @@ class SoftConstraintCost(AbstractCost):
     def cost(self, x: np.ndarray):
         ex_min = x - self.x_min
         ex_max = x - self.x_max
-
         ex = np.zeros_like(x)
-
-        ex[x < self.x_min] = ex_min[x < self.x_min]
-        ex[x >= self.x_max] = ex_max[x >= self.x_max]
+        min_mask = x < self.x_min
+        max_mask = x > self.x_max
+        ex[min_mask] = ex_min[min_mask]
+        ex[max_mask] = ex_max[max_mask]
         return 0.5 * ex.T @ self.Q @ ex
 
     def gradient(self, x: np.ndarray):
         ex_min = x - self.x_min
         ex_max = x - self.x_max
-
         ex = np.zeros_like(x)
         min_mask = x < self.x_min
-        ex[min_mask] = ex_min[min_mask]
         max_mask = x > self.x_max
+        ex[min_mask] = ex_min[min_mask]
         ex[max_mask] = ex_max[max_mask]
         return self.Q @ ex
 
