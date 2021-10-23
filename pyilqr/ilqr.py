@@ -19,9 +19,15 @@ class ILQRSolver:
     "The nonlinear optimal control problem to be solved."
     max_iterations: int = 100
     "The maximum number of local approximations to be computed."
-    n_backtracking_steps = 5
+    n_backtracking_steps: int = 5
     "The maximum number of backtracking steps during line-search."
-    verbose = False
+    default_regularization: float = 0.01
+    "The default regularization that is added to the control cost R"
+    regularization_step_size: float = 0.1
+    "The amount by which the regularization is increased if an LQR approximation is illconditioned"
+    n_regularization_steps: int = 5
+    "The number of times regularization is increased before giving up."
+    verbose: bool = False
     "Flag to enable debug messages."
     _lqr_solver: LQRSolver = field(init=False)
     "The inner LQR solver that solve the lq-approximations."
@@ -48,8 +54,7 @@ class ILQRSolver:
             last_xop
         ) + self.ocp.input_cost.trajectory_cost(last_uop)
 
-        max_regularization_steps = 5
-        regularization = 0
+        regularization = self.default_regularization
 
         for it in range(self.max_iterations):
             if has_converged or not sufficient_decrease:
@@ -63,22 +68,28 @@ class ILQRSolver:
             self._lqr_solver.ocp.dynamics = (
                 self.ocp.dynamics.linearized_along_trajectory(last_xop, last_uop)
             )
-
             lqr_is_convex = False
-            for _ in range(max_regularization_steps):
+            for _ in range(self.n_regularization_steps):
                 if lqr_is_convex:
                     break
                 try:
-                    local_strategy, expected_decrease = self._lqr_solver.solve(regularization)
+                    local_strategy, expected_decrease = self._lqr_solver.solve(
+                        regularization
+                    )
+                    assert expected_decrease >= 0
                     lqr_is_convex = True
                 except IllconditionedProblemError:
-                    regularization += 0.01
+                    if self.verbose:
+                        print("regularization added")
+                    regularization += self.regularization_step_size
+            if not lqr_is_convex:
+                raise RuntimeError("Unable to convexify cost.")
 
             (
                 last_xop,
                 last_uop,
                 updated_cost,
-                sufficient_decrease
+                sufficient_decrease,
             ) = self._update_operating_point(
                 last_xop,
                 last_uop,
@@ -88,8 +99,9 @@ class ILQRSolver:
             )
 
             if self.verbose:
-                print("Actual decrease:", updated_cost - last_cost)
-                print("Expetcted decrease:", expected_decrease)
+                print("Actual decrease:", last_cost - updated_cost)
+                print("Expected decrease:", expected_decrease)
+                print("Sufficient decrease:", sufficient_decrease)
             last_cost = updated_cost
             # This could be replaced with a more accurate convergence criterion.
             has_converged = expected_decrease < 1e-5
@@ -120,6 +132,7 @@ class ILQRSolver:
         step_size = 1
         updated_cost = float("inf")
         updated_xop, updated_uop = None, None
+        sufficient_decrease = False
 
         for _ in range(n_backtracking_steps):
             updated_xop, updated_uop = self._local_rollout(
