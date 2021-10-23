@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pyilqr.ocp import OptimalControlProblem, LQRProblem, AbstractDynamics
 from pyilqr.strategies import AbstractStrategy, AffineStrategy
 from pyilqr.lqr import IllconditionedProblemError, LQRSolver
-from typing import Any, Tuple
+from typing import Tuple
 from copy import copy
 
 
@@ -21,12 +21,12 @@ class ILQRSolver:
     "The maximum number of local approximations to be computed."
     n_backtracking_steps: int = 10
     "The maximum number of backtracking steps during line-search."
-    default_regularization: float = 0.0
+    default_regularization: float = 1e-3
     "The default regularization that is added to the control cost R"
-    regularization_step_size: float = 0.1
-    "The amount by which the regularization is increased if an LQR approximation is illconditioned"
-    n_regularization_steps: int = 5
-    "The number of times regularization is increased before giving up."
+    regularization_step_upscale: float = 2
+    "The amount by which the regularization is increased if an LQR approximation is illconditioned or line-search fails to find a descent direction."
+    regularization_step_downscale: float = 0.9
+    "The amount by which the regularization is decreased if sufficient decrease is achieved."
     convergence_tolerance: float = 1e-4
     "The on the Q-value gradient that needs to be met in order to claim convergence."
     sufficient_decrease_tolerance: float = 1e-3
@@ -49,7 +49,6 @@ class ILQRSolver:
         """
 
         has_converged = False
-        sufficient_decrease = True
         last_xop, last_uop, _ = self.ocp.dynamics.rollout(
             x0, initial_strategy, self.ocp.horizon
         )
@@ -61,10 +60,7 @@ class ILQRSolver:
         regularization = self.default_regularization
 
         for _ in range(self.max_iterations):
-            if has_converged or not sufficient_decrease:
-                if self.verbose:
-                    print("has_converged", has_converged)
-                    print("sufficient_decrease", sufficient_decrease)
+            if has_converged:
                 break
             self._lqr_solver.ocp.state_cost = (
                 self.ocp.state_cost.quadratisized_along_trajectory(last_xop)
@@ -75,22 +71,17 @@ class ILQRSolver:
             self._lqr_solver.ocp.dynamics = (
                 self.ocp.dynamics.linearized_along_trajectory(last_xop, last_uop)
             )
-            lqr_is_convex = False
-            for _ in range(self.n_regularization_steps):
-                if lqr_is_convex:
-                    break
-                try:
-                    local_strategy, expected_decrease = self._lqr_solver.solve(
-                        regularization
-                    )
-                    assert expected_decrease >= 0
-                    lqr_is_convex = True
-                except IllconditionedProblemError:
-                    if self.verbose:
-                        print("regularization added")
-                    regularization += self.regularization_step_size
-            if not lqr_is_convex:
-                raise RuntimeError("Unable to convexify cost.")
+            try:
+                local_strategy, expected_decrease = self._lqr_solver.solve(
+                    regularization
+                )
+                assert expected_decrease >= 0
+                lqr_is_convex = True
+            except IllconditionedProblemError:
+                if self.verbose:
+                    print("regularization added")
+                regularization *= self.regularization_step_upscale
+                continue
 
             if expected_decrease < self.convergence_tolerance:
                 has_converged = True
@@ -113,8 +104,12 @@ class ILQRSolver:
             if self.verbose:
                 print("Actual decrease:", last_cost - updated_cost)
                 print("Expected decrease:", expected_decrease)
+                print("regularization:", regularization)
             last_cost = updated_cost
-            # This could be replaced with a more accurate convergence criterion.
+            if sufficient_decrease:
+                regularization *= self.regularization_step_downscale
+            else:
+                regularization *= self.regularization_step_upscale
 
         return last_xop, last_uop, has_converged
 
