@@ -57,11 +57,7 @@ class LQRSolver:
             # gradient of the state-action-cost (Q-cost)
             q_decrease_step = a.T @ Ya
             if not (q_decrease_step >= 0):
-                print("Invalid step")
-                print(eigvals(S))
-                print(q_decrease_step)
                 raise(IllconditionedProblemError(f"q_decrease_step was: {q_decrease_step}"))
             expected_decrease += q_decrease_step
-            #q += norm(Ya)
 
         return strategy, expected_decrease
